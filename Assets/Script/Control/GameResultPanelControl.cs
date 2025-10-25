@@ -17,11 +17,17 @@ public class GameResultPanelControl : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
     [SerializeField] TextMeshProUGUI GameResultPanelTitle;
+    [SerializeField] TextMeshProUGUI LevelText;
+
 
     [SerializeField] Button RandomStartButton;
     [SerializeField] Button BlackStartButton;
     [SerializeField] Button WhiteStartButton;
     [SerializeField] Button ExitButton;
+
+    [SerializeField] Button EasyButton;
+    [SerializeField] Button MediumButton;
+    [SerializeField] Button HardButton;
 
 
     private void Awake()
@@ -34,12 +40,23 @@ public class GameResultPanelControl : MonoBehaviour
 
     void InitButton()
     {
+        SetLevel(GomokuConstants.EasyLevelDepth);
         RandomStartButton.onClick.AddListener(OnRandomStartButtonClick);
         BlackStartButton.onClick.AddListener(OnBlackStartButtonClick);
         WhiteStartButton.onClick.AddListener(OnWhiteStartButtonClick);
+        EasyButton.onClick.AddListener(() => SetLevel(GomokuConstants.EasyLevelDepth));
+        MediumButton.onClick.AddListener(() => SetLevel(GomokuConstants.MediumLevelDepth));
+        HardButton.onClick.AddListener(() => SetLevel(GomokuConstants.HardLevelDepth));
         ExitButton.onClick.AddListener(OnExitButtonClick);
 
     }
+
+    void SetLevel(int level)
+    {
+        GomokuManager.Instance.SetCurrentLevel(level);
+        LevelText.text = level.ToString();
+    }
+
 
     void OnRandomStartButtonClick()
     {

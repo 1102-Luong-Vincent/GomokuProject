@@ -9,7 +9,9 @@ public static class GomokuConstants
     public const float chessPositionY = 0.03f;
     public const float AIThinkTime = 1f;
 
-    public const int EasyLevelDepth = 3;
+    public const int EasyLevelDepth = 1;
+    public const int MediumLevelDepth = 2;
+    public const int HardLevelDepth = 3;
 }
 
 public class GomokuManager : MonoBehaviour
@@ -26,6 +28,8 @@ public class GomokuManager : MonoBehaviour
 
     [SerializeField] DeskControl deskControl;
     private bool aiThinking = false;
+
+    int currentLevel = GomokuConstants.EasyLevelDepth;
 
     private void Awake()
     {
@@ -143,6 +147,11 @@ public class GomokuManager : MonoBehaviour
         }
     }
 
+    public void SetCurrentLevel(int newLevel)
+    {
+        currentLevel = newLevel;
+    }
+
     #region AI
 
     public void AIMove(float thinkTime)
@@ -160,7 +169,7 @@ public class GomokuManager : MonoBehaviour
         (int x, int y) = GomokuAI.Instance.FindBestMoveByMinMax(
             gomokuData.GetBoard(),
             gomokuData.GetAIColor(),
-            GomokuConstants.EasyLevelDepth
+            currentLevel
         );
 
         if (x == -1 || y == -1)
