@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class DeskConstants
 {
     public const float CellSize = 0.02f;
-    public const int ConstrainCount = 7;
+    public const int ConstrainCount = 9;
 
 }
 
@@ -23,6 +23,8 @@ public class DeskControl : MonoBehaviour
     {
         InitDesk();
     }
+
+
 
     void InitDesk()
     {

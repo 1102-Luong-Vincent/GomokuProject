@@ -81,6 +81,18 @@ public class GomokuManager : MonoBehaviour
         }
     }
 
+
+    public void OnGridClicked(int x, int y)
+    {
+        if (!GameManager.Instance.IsPlayingGame() || !gomokuData.IsPlayerTurn() || aiThinking)
+            return;
+        Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
+        cellCenter.y = GomokuConstants.chessPositionY;
+
+        CreateChess(cellCenter, x, y);
+    }
+
+
     void ClearBoard()
     {
         foreach (var OlderChess in currentChessesOnBoard)
