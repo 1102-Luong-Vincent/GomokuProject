@@ -17,8 +17,6 @@ public class GomokuManager : MonoBehaviour
 
     [SerializeField] ChessControl blackChessPrefab;
     [SerializeField] ChessControl whiteChessPrefab;
-    [SerializeField] private AudioSource sfxAudio;
-    [SerializeField] private AudioClip placeSfx;
 
     List<ChessControl> currentChessesOnBoard = new List<ChessControl> ();
 
@@ -110,7 +108,8 @@ public class GomokuManager : MonoBehaviour
     void CreateChess(Vector3 boardPosition, int x, int y)
     {
         if (!gomokuData.PlaceChess(x, y)) return;
-        sfxAudio.PlayOneShot(placeSfx);
+        AudioManager.Instance.PlayClick();
+
 
         bool isBlackTurn = gomokuData.IsBlackTurn();
         var prefab = isBlackTurn ? blackChessPrefab : whiteChessPrefab;
