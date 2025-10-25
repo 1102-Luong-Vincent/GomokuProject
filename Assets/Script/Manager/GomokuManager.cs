@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -7,8 +8,9 @@ public static class GomokuConstants
 {
     public const float chessPositionY = 0.03f;
     public const float AIThinkTime = 1f;
-}
 
+    public const int EasyLevelDepth = 3;
+}
 
 public class GomokuManager : MonoBehaviour
 {
@@ -18,13 +20,12 @@ public class GomokuManager : MonoBehaviour
     [SerializeField] ChessControl blackChessPrefab;
     [SerializeField] ChessControl whiteChessPrefab;
 
-    List<ChessControl> currentChessesOnBoard = new List<ChessControl> ();
+    List<ChessControl> currentChessesOnBoard = new List<ChessControl>();
 
-   public GomokuData gomokuData;
+    public GomokuData gomokuData;
 
     [SerializeField] DeskControl deskControl;
     private bool aiThinking = false;
-
 
     private void Awake()
     {
@@ -47,7 +48,6 @@ public class GomokuManager : MonoBehaviour
         return gomokuData.IsPlayerWin(winner);
     }
 
-
     public void StartGame(bool isPlayerBlack)
     {
         ClearBoard();
@@ -55,12 +55,13 @@ public class GomokuManager : MonoBehaviour
         if (!gomokuData.IsPlayerTurn()) AIMove(0);
     }
 
-
     void Update()
     {
-        if (Input.GetMouseButtonDown(0)) 
+        if (Input.GetMouseButtonDown(0))
         {
-            if (!GameManager.Instance.IsPlayingGame() && !gomokuData.IsPlayerTurn() && !aiThinking)return;
+            if (!GameManager.Instance.IsPlayingGame() || !gomokuData.IsPlayerTurn() || aiThinking)
+                return;
+
             TryPlaceChess();
         }
     }
@@ -75,7 +76,7 @@ public class GomokuManager : MonoBehaviour
             {
                 Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
                 cellCenter.y = GomokuConstants.chessPositionY;
-                CreateChess(cellCenter,x,y);
+                CreateChess(cellCenter, x, y);
             }
         }
     }
@@ -96,7 +97,6 @@ public class GomokuManager : MonoBehaviour
         {
             currentChess.ShowNumText(isShowNumber);
         }
-
     }
 
     public GomoKuType GetPlayerColor()
@@ -104,12 +104,10 @@ public class GomokuManager : MonoBehaviour
         return gomokuData.GetPlayerColor();
     }
 
-
     void CreateChess(Vector3 boardPosition, int x, int y)
     {
         if (!gomokuData.PlaceChess(x, y)) return;
         AudioManager.Instance.PlayClick();
-
 
         bool isBlackTurn = gomokuData.IsBlackTurn();
         var prefab = isBlackTurn ? blackChessPrefab : whiteChessPrefab;
@@ -127,7 +125,10 @@ public class GomokuManager : MonoBehaviour
 
         gomokuData.NextTurn();
 
-        if (!gomokuData.IsPlayerTurn()) AIMove(GomokuConstants.AIThinkTime);
+        if (!gomokuData.IsPlayerTurn())
+        {
+            AIMove(GomokuConstants.AIThinkTime);
+        }
     }
 
     #region AI
@@ -137,19 +138,29 @@ public class GomokuManager : MonoBehaviour
         StartCoroutine(AIMoveCoroutines(thinkTime));
     }
 
-
-    private System.Collections.IEnumerator AIMoveCoroutines(float thinkTime)
+    private IEnumerator AIMoveCoroutines(float thinkTime)
     {
         if (aiThinking) yield break;
         aiThinking = true;
 
         yield return new WaitForSeconds(thinkTime);
 
-        (int x, int y) = AIRandomMove();
+        (int x, int y) = GomokuAI.Instance.FindBestMoveByMinMax(
+            gomokuData.GetBoard(),
+            gomokuData.GetAIColor(),
+            GomokuConstants.EasyLevelDepth
+        );
+
+        if (x == -1 || y == -1)
+        {
+            aiThinking = false;
+            yield break;
+        }
 
         Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
         cellCenter.y = GomokuConstants.chessPositionY;
         CreateChess(cellCenter, x, y);
+
         aiThinking = false;
     }
 
@@ -169,10 +180,9 @@ public class GomokuManager : MonoBehaviour
             }
         }
 
-        if (emptyCells.Count == 0) return (-1, -1); 
+        if (emptyCells.Count == 0) return (-1, -1);
         return emptyCells[UnityEngine.Random.Range(0, emptyCells.Count)];
     }
-
 
     #endregion
 }

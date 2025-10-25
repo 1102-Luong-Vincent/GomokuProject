@@ -486,8 +486,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   blackChessPrefab: {fileID: 637679465546336143, guid: a86b819912c712040b61c758b6599bf5, type: 3}
   whiteChessPrefab: {fileID: 925903170668458908, guid: 8fc1834f11e068948b1944782fbfe4de, type: 3}
-  sfxAudio: {fileID: 539067162}
-  placeSfx: {fileID: 8300000, guid: ed045cd25b8ec924b822517c271f5aea, type: 3}
   deskControl: {fileID: 2000883896}
 --- !u!1 &539067160
 GameObject:
@@ -500,7 +498,7 @@ GameObject:
   - component: {fileID: 539067161}
   - component: {fileID: 539067162}
   m_Layer: 0
-  m_Name: Sound Effect Audio
+  m_Name: Sound Effect Audio Source
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -531,8 +529,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: ed045cd25b8ec924b822517c271f5aea, type: 3}
-  m_Resource: {fileID: 8300000, guid: ed045cd25b8ec924b822517c271f5aea, type: 3}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
@@ -947,7 +945,7 @@ GameObject:
   - component: {fileID: 991573539}
   - component: {fileID: 991573538}
   m_Layer: 0
-  m_Name: Audio Source
+  m_Name: Background Audio Source
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -963,8 +961,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 3238f1e723535b54eb3852978fabc2cd, type: 3}
-  m_Resource: {fileID: 8300000, guid: 3238f1e723535b54eb3852978fabc2cd, type: 3}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
   m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
@@ -1189,6 +1187,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 9059536476661636771, guid: 0d21ea2bb5058b44e93f8c6abcddb46a, type: 3}
   m_PrefabInstance: {fileID: 5414064683915796497}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1236703933
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1236703935}
+  - component: {fileID: 1236703934}
+  m_Layer: 0
+  m_Name: Gomuku AI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1236703934
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1236703933}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4d8b360ea02eb5449d86c946f1e8df2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1236703935
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1236703933}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1005.25964, y: 634.36896, z: 685.73285}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1367209201
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1457,6 +1499,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1447047647}
+  - component: {fileID: 1447047648}
   m_Layer: 0
   m_Name: Audio Manager
   m_TagString: Untagged
@@ -1481,6 +1524,20 @@ Transform:
   - {fileID: 539067161}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1447047648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1447047646}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e91def7d3a391d49a712a4ea0880b36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bgmAudio: {fileID: 991573538}
+  sfxAudio: {fileID: 539067162}
 --- !u!1 &1840251755
 GameObject:
   m_ObjectHideFlags: 0
@@ -2239,3 +2296,4 @@ SceneRoots:
   - {fileID: 1840251759}
   - {fileID: 822366417}
   - {fileID: 1447047647}
+  - {fileID: 1236703935}

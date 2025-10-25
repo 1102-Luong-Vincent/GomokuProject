@@ -150,6 +150,26 @@ public class GomokuData
         }
     }
 
+
+    public GomoKuType GetAIColor()
+    {
+        if (isPlayerBlack)
+        {
+            return GomoKuType.White;
+        }
+        else
+        {
+            return GomoKuType.Black;
+        }
+    }
+
+
+    public GomoKuType[,] GetBoard()
+    {
+        return board;
+    }
+
+
     public void NextTurn() => CurrentTurn++;
 
     public GomoKuType GetCell(int x, int y) => board[x, y];
