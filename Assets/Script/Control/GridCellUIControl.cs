@@ -14,6 +14,6 @@ public class GridCellUIControl : MonoBehaviour, IPointerClickHandler
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        GomokuManager.Instance.OnGridClicked(x, y);
+       // GomokuManager.Instance.OnGridClicked(x, y);
     }
 }

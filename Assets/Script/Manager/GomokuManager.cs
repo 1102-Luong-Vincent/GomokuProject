@@ -28,6 +28,7 @@ public class GomokuManager : MonoBehaviour
 
     [SerializeField] DeskControl deskControl;
     private bool aiThinking = false;
+    private bool isMoving = false; // ????????
 
     int currentLevel = GomokuConstants.EasyLevelDepth;
 
@@ -63,7 +64,8 @@ public class GomokuManager : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            if (!GameManager.Instance.IsPlayingGame() || !gomokuData.IsPlayerTurn() || aiThinking)
+            // ??????????????????????
+            if (!GameManager.Instance.IsPlayingGame() || !gomokuData.IsPlayerTurn() || aiThinking || isMoving)
                 return;
 
             TryPlaceChess();
@@ -78,24 +80,17 @@ public class GomokuManager : MonoBehaviour
             GameObject hitObj = hit.collider.gameObject;
             if (deskControl.IsAtGridCells(hitObj, out int x, out int y))
             {
-                Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
-                cellCenter.y = GomokuConstants.chessPositionY;
-                CreateChess(cellCenter, x, y);
+                PlayerMoveCoroutines(x, y);
             }
         }
     }
 
-
-    public void OnGridClicked(int x, int y)
+    void PlayerMoveCoroutines(int x, int y)
     {
-        if (!GameManager.Instance.IsPlayingGame() || !gomokuData.IsPlayerTurn() || aiThinking)
-            return;
-        Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
-        cellCenter.y = GomokuConstants.chessPositionY;
-
-        CreateChess(cellCenter, x, y);
+        (int, int) endPoint = (x, y);
+        List<(int, int)> Path = AStarAlgorithm.AStarFindPath(gomokuData.GetBoard(), endPoint);
+        StartCoroutine(MovePieceAlongPath(Path));
     }
-
 
     void ClearBoard()
     {
@@ -149,10 +144,6 @@ public class GomokuManager : MonoBehaviour
         return newChess.gameObject;
     }
 
-
-
-
-
     public void SetCurrentLevel(int newLevel)
     {
         currentLevel = newLevel;
@@ -165,46 +156,39 @@ public class GomokuManager : MonoBehaviour
         StartCoroutine(AIMoveCoroutines(thinkTime));
     }
 
-    //private IEnumerator AIMoveCoroutines(float thinkTime)
-    //{
-    //    if (aiThinking) yield break;
-    //    aiThinking = true;
-
-    //    yield return new WaitForSeconds(thinkTime);
-
-    //    (int x, int y) = GomokuAI.Instance.FindBestMoveByMinMax(
-    //        gomokuData.GetBoard(),
-    //        gomokuData.GetAIColor(),
-    //        currentLevel
-    //    );
-
-    //    if (x == -1 || y == -1)
-    //    {
-    //        aiThinking = false;
-    //        yield break;
-    //    }
-
-    //    Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
-    //    cellCenter.y = GomokuConstants.chessPositionY;
-    //    CreateChess(cellCenter, x, y);
-
-    //    aiThinking = false;
-    //}
-
-
-
     private IEnumerator AIMoveCoroutines(float thinkTime)
     {
-        if (aiThinking) yield break;
+        while (isMoving)
+        {
+            yield return null;
+        }
+
         aiThinking = true;
 
         yield return new WaitForSeconds(thinkTime);
 
-        List<(int , int)> Path = GomokuAI.Instance.FindBestMovePathByMinMax(
+        List<(int, int)> Path = GomokuAI.Instance.FindBestMovePathByMinMax(
             gomokuData.GetBoard(),
             gomokuData.GetAIColor(),
             currentLevel
         );
+
+        if (Path == null || Path.Count == 0)
+        {
+            aiThinking = false;
+            yield break;
+        }
+
+        yield return StartCoroutine(MovePieceAlongPath(Path));
+
+        aiThinking = false;
+    }
+
+    private IEnumerator MovePieceAlongPath(List<(int x, int y)> Path, float stepDelay = 1f)
+    {
+        if (Path == null || Path.Count == 0) yield break;
+
+        isMoving = true;
 
         int x = Path[0].Item1, y = Path[0].Item2;
         Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
@@ -212,23 +196,13 @@ public class GomokuManager : MonoBehaviour
 
         foreach (var item in Path)
         {
-            newPiece.transform.position = deskControl.GetGridCell(item.Item1, item.Item2).transform.position;
-            yield return new WaitForSeconds(1f);
+            Vector3 targetPos = deskControl.GetGridCell(item.x, item.y).transform.position;
+            newPiece.transform.position = targetPos;
+            yield return new WaitForSeconds(stepDelay);
         }
 
-        aiThinking = false;
-
+        isMoving = false; 
     }
-
-
-
-
-
-
-
-
-
-
 
     private (int x, int y) AIRandomMove()
     {
