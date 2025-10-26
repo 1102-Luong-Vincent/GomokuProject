@@ -89,7 +89,7 @@ public class GomokuManager : MonoBehaviour
     void PlayerMoveCoroutines(int x, int y)
     {
         (int, int) endPoint = (x, y);
-        List<(int, int)> Path = AStarAlgorithm.AStarFindPath(gomokuData.GetBoard(), endPoint);
+        List<(int, int)> Path = AStarAlgorithm.AStarFindWayPoint(gomokuData.GetBoard(), endPoint);
         StartCoroutine(MovePieceAlongPath(Path));
     }
 
@@ -156,7 +156,7 @@ public class GomokuManager : MonoBehaviour
 
         yield return new WaitForSeconds(thinkTime);
 
-        List<(int, int)> Path = GomokuAI.Instance.FindBestMovePathByMinMax(
+        List<(int, int)> Path = GomokuAI.Instance.FindBestMovePathWithRetries(
             gomokuData.GetBoard(),
             gomokuData.GetAIColor(),
             currentLevel
@@ -175,25 +175,31 @@ public class GomokuManager : MonoBehaviour
 
     private IEnumerator MovePieceAlongPath(List<(int x, int y)> Path)
     {
-        if (Path == null || Path.Count == 0) yield break;
+        if (Path == null || Path.Count == 0)
+            yield break;
 
-        if (!PlaceChess(Path)) yield break;
+        if (!PlaceChess(Path))
+            yield break;
 
         isMoving = true;
 
-        int x = Path[0].Item1, y = Path[0].Item2;
-        Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
-        GameObject newPiece = CreateChess(cellCenter, x, y);
-
-        foreach (var item in Path)
+        int startX = Path[0].x, startY = Path[0].y;
+        Vector3 startPos = deskControl.GetGridCell(startX, startY).transform.position;
+        GameObject newPiece = CreateChess(startPos, startX, startY);
+        List<Vector3> waypoints = new List<Vector3>();
+        foreach (var point in Path)
         {
-            Vector3 targetPos = deskControl.GetGridCell(item.x, item.y).transform.position;
-            newPiece.transform.position = targetPos;
-            yield return new WaitForSeconds(GameUIControl.Instance.moveSpeed);
+            Vector3 pos = deskControl.GetGridCell(point.x, point.y).transform.position;
+            waypoints.Add(pos);
         }
 
+        PotentialFieldsManager.Instance.AddCurrentItems(newPiece);
+        yield return StartCoroutine(PotentialFieldsManager.Instance.StartPFMovement(waypoints, newPiece));
 
-        GomoKuType result = gomokuData.CheckGameState(FindPathLastPoint(Path).Item1, FindPathLastPoint(Path).Item2);
+
+
+        var last = FindPathLastPoint(Path);
+        GomoKuType result = gomokuData.CheckGameState(last.Item1, last.Item2);
         if (result != GomoKuType.None)
         {
             GameManager.Instance.EndGame(result);
@@ -204,13 +210,20 @@ public class GomokuManager : MonoBehaviour
         gomokuData.NextTurn();
 
         if (!gomokuData.IsPlayerTurn())
-        {
             AIMove(GomokuConstants.AIThinkTime);
-        }
 
-
-        isMoving = false; 
+        isMoving = false;
     }
+
+
+
+
+
+
+
+
+
+
 
 
     bool PlaceChess(List<(int x,int y)> Path)

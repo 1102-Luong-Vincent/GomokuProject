@@ -12,9 +12,9 @@ public class GameUIControl : MonoBehaviour
 
     [SerializeField] TextMeshProUGUI MoveSpeedText;
     [SerializeField] Slider MoveSpeedSlider;
+    private readonly float[] speedLevels = { 0.001f, 0.01f, 0.05f, 0.1f, 0.15f }; 
 
-
-    public float moveSpeed = 1f;
+    private float moveSpeed = 1f;
 
     private void Awake()
     {
@@ -27,24 +27,31 @@ public class GameUIControl : MonoBehaviour
 
     void InitSlider()
     {
-        MoveSpeedSlider.value = moveSpeed;
-        MoveSpeedSlider.maxValue = 10f;
-        MoveSpeedSlider.minValue = 0f;
+        MoveSpeedSlider.minValue = 0;
+        MoveSpeedSlider.maxValue = speedLevels.Length - 1;
+        MoveSpeedSlider.wholeNumbers = true; 
+        MoveSpeedSlider.value = 1;
         MoveSpeedSlider.onValueChanged.AddListener(OnSliderValueChanged);
-        SetSpeed(MoveSpeedSlider.value);
+        SetSpeed((int)MoveSpeedSlider.value);
     }
 
 
     private void OnSliderValueChanged(float value)
     {
-        SetSpeed(value);
+        int index = Mathf.RoundToInt(value); 
+        SetSpeed(index);
     }
 
-    void SetSpeed(float speed)
+    void SetSpeed(int levelIndex)
     {
-        moveSpeed = speed;
-        MoveSpeedText.text = $"Current Move Speed :{speed.ToString("N1")}";
+        levelIndex = Mathf.Clamp(levelIndex, 0, speedLevels.Length - 1);
+        moveSpeed = speedLevels[levelIndex];
+        MoveSpeedText.text = $"Current Move Speed: {moveSpeed.ToString("N3")}";
+    }
 
+    public float GetMoveSpeed()
+    {
+        return moveSpeed;
     }
 
     #region Buttons

@@ -30,6 +30,7 @@ public class GameManager : MonoBehaviour
     {
         GomokuManager.Instance.StartGame(isPlayerBlack);
         UIManager.Instance.StartGame();
+        PotentialFieldsManager.Instance.ClearCurrentItems();
         isPlaying = true;
     }
 

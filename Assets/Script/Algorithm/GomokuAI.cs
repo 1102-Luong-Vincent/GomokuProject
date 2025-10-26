@@ -19,6 +19,32 @@ public class GomokuAI : MonoBehaviour
     }
 
 
+    public List<(int, int)> FindBestMovePathWithRetries(GomoKuType[,] board, GomoKuType aiPiece, int depth,int maxRetries = 100)
+    {
+        List<(int, int)> path = null;
+        int retries = 0;
+
+        while (retries < maxRetries)
+        {
+            var bestMove = FindBestMoveByMinMax(board, aiPiece, depth);
+
+            if (bestMove == (-1, -1))break; 
+
+            path = AStarAlgorithm.AStarFindWayPoint(board, bestMove);
+
+            if (path != null && path.Count > 0)
+            {
+                break;
+            }
+
+            board[bestMove.Item1, bestMove.Item2] = GomoKuType.Draw;
+            retries++;
+        }
+
+        return path;
+    }
+
+
 
 
     public List<(int,int)> FindBestMovePathByMinMax(GomoKuType[,] board, GomoKuType aiPiece, int depth)
@@ -50,7 +76,7 @@ public class GomokuAI : MonoBehaviour
             bestMove = moves[0];
         }
 
-        return AStarAlgorithm.AStarFindPath(board,bestMove);
+        return AStarAlgorithm.AStarFindWayPoint(board,bestMove);
     }
 
 
