@@ -7,15 +7,17 @@ using System.Collections;
 public class PotentialFieldsManager : MonoBehaviour
 {
     public static PotentialFieldsManager Instance;
-
     private List<GameObject> currentItems = new List<GameObject>();
-    private Coroutine pfCoroutine;
+    [SerializeField] Transform Decorate;
+    private List<GameObject> DecorateObjects = new List<GameObject>();
 
     [Header("Potential Field Settings")]
-    public float attractionStrength = 5f; 
-    public float repulsionStrength = 3f;  
-    public float repulsionRange = 2f;
+    public float attractionStrength = 10f;
+    public float repulsionStrength = 9f;
     private float stopDistance = 0.0001f;
+
+    [Header("Timeout Settings")]
+    public float waypointTimeout = 5f; 
 
     private void Awake()
     {
@@ -25,6 +27,16 @@ public class PotentialFieldsManager : MonoBehaviour
             return;
         }
         Instance = this;
+    }
+
+    private void Start()
+    {
+        DecorateObjects.Clear();
+        for (int i = 0; i < Decorate.childCount; i++)
+        {
+            GameObject childObj = Decorate.GetChild(i).gameObject;
+            DecorateObjects.Add(childObj);
+        }
     }
 
     public void ClearCurrentItems()
@@ -43,7 +55,6 @@ public class PotentialFieldsManager : MonoBehaviour
             currentItems.Add(item);
     }
 
-
     public IEnumerator StartPFMovement(List<Vector3> waypoints, GameObject moveObject)
     {
         if (waypoints == null || waypoints.Count == 0 || moveObject == null)
@@ -51,127 +62,146 @@ public class PotentialFieldsManager : MonoBehaviour
 
         foreach (Vector3 targetPoint in waypoints)
         {
-            bool reached = false;
-
-            while (!reached)
-            {
-                if (moveObject == null)
-                    yield break;
-
-                Vector3 pos = moveObject.transform.position;
-                Vector3 dir = targetPoint - pos;
-                float dist = dir.magnitude;
-                if (dist > stopDistance) 
-                {
-                    Vector3 attractionForce = dir.normalized * attractionStrength;
-                    Vector3 velocity = attractionForce.normalized *
-                                       GameUIControl.Instance.GetMoveSpeed() * Time.deltaTime;
-                    moveObject.transform.position += velocity;
-                }
-                else
-                {
-                    moveObject.transform.position = targetPoint;
-                    reached = true;
-                }
-
-                yield return null; 
-            }
+            yield return MoveToWaypoint(moveObject, targetPoint);
         }
     }
 
-
-    //public void StartPFMovement(List<Vector3> waypoints)
-    //{
-    //    if (waypoints == null || waypoints.Count == 0)
-    //    {
-    //        Debug.LogWarning("No waypoints provided for PF movement!");
-    //        return;
-    //    }
-
-    //    if (pfCoroutine != null)
-    //        StopCoroutine(pfCoroutine);
-
-    //    pfCoroutine = StartCoroutine(PFMovementCoroutine(waypoints));
-    //}
-
-    public void StopPFMovement()
+    private IEnumerator MoveToWaypoint(GameObject moveObject, Vector3 targetPoint)
     {
-        if (pfCoroutine != null)
-        {
-            StopCoroutine(pfCoroutine);
-            pfCoroutine = null;
-        }
-    }
+        if (moveObject == null)
+            yield break;
 
-    private IEnumerator PFMovementCoroutine(List<Vector3> waypoints)
-    {
-        int currentWaypointIndex = 0;
+        float elapsedTime = 0f;
+        bool reached = false;
 
-        while (true)
+        float moveRadius = GetObjectRadius(moveObject);
+
+        while (!reached && elapsedTime < waypointTimeout)
         {
-            if (currentItems.Count == 0)
+            if (moveObject == null)
                 yield break;
 
-            Vector3 target = waypoints[currentWaypointIndex];
+            Vector3 pos = moveObject.transform.position;
+            float distToTarget = Vector3.Distance(pos, targetPoint);
 
-            bool allReached = true;
-
-            foreach (GameObject item in currentItems)
+            if (distToTarget > stopDistance)
             {
-                if (item == null) continue;
-
-                Vector3 pos = item.transform.position;
-                Vector3 totalForce = Vector3.zero;
-                Vector3 dirToTarget = target - pos;
-                float distToTarget = dirToTarget.magnitude;
-
-                //if (distToTarget > stopDistance)
-                //{
-                //    Vector3 attractionForce = dirToTarget.normalized * attractionStrength;
-                //    totalForce += attractionForce;
-                //    allReached = false; 
-                //}
-
-                foreach (GameObject other in currentItems)
-                {
-                    if (other == null || other == item) continue;
-
-                    Vector3 dir = pos - other.transform.position;
-                    float dist = dir.magnitude;
-
-                    if (dist < repulsionRange && dist > 0.01f)
-                    {
-                        Vector3 repulsionForce = dir.normalized * (repulsionStrength / dist);
-                        totalForce += repulsionForce;
-                    }
-                }
-
-                Vector3 velocity = totalForce.normalized * GameUIControl.Instance.GetMoveSpeed() * Time.deltaTime;
-                item.transform.position += velocity;
+                Vector3 velocity = CalculatePotentialFieldVelocity(moveObject, pos, targetPoint, moveRadius);
+                moveObject.transform.position += velocity;
+                elapsedTime += Time.deltaTime;
             }
-
-            if (allReached)
+            else
             {
-                currentWaypointIndex++;
-                if (currentWaypointIndex >= waypoints.Count)
-                {
-                    Debug.Log("All waypoints reached! PF movement finished.");
-                    StopPFMovement();
-                    yield break;
-                }
+                reached = true;
             }
 
             yield return null;
         }
+
+        if (moveObject != null)
+        {
+            moveObject.transform.position = targetPoint;
+
+        }
     }
 
+
+
+
+
+    private Vector3 CalculatePotentialFieldVelocity(GameObject moveObject, Vector3 currentPos,
+                                                     Vector3 targetPos, float moveRadius)
+    {
+        Vector3 attractionForce = CalculateAttractionForce(currentPos, targetPos);
+        Vector3 totalRepulsion = CalculateTotalRepulsionForce(moveObject, currentPos, moveRadius);
+        Vector3 totalForce = attractionForce + totalRepulsion;
+        float speed = GameUIControl.Instance.GetMoveSpeed();
+        Vector3 velocity = totalForce.normalized * speed * Time.deltaTime;
+
+        return velocity;
+    }
+
+    private Vector3 CalculateAttractionForce(Vector3 currentPos, Vector3 targetPos)
+    {
+        Vector3 direction = targetPos - currentPos;
+        return direction.normalized * attractionStrength;
+    }
+
+    private Vector3 CalculateTotalRepulsionForce(GameObject moveObject, Vector3 currentPos, float moveRadius)
+    {
+        Vector3 totalRepulsion = Vector3.zero;
+
+        foreach (GameObject obstacle in DecorateObjects)
+        {
+            if (obstacle == null || obstacle == moveObject)
+                continue;
+
+            Vector3 repulsionForce = CalculateSingleObstacleRepulsion(
+                currentPos,
+                obstacle,
+                moveRadius
+            );
+
+            totalRepulsion += repulsionForce;
+        }
+
+        return totalRepulsion;
+    }
+    private Vector3 CalculateSingleObstacleRepulsion(Vector3 currentPos, GameObject obstacle, float moveRadius)
+    {
+        float obstacleRadius = GetObjectRadius(obstacle);
+
+        Vector3 repulsionDir = currentPos - obstacle.transform.position;
+        float distance = repulsionDir.magnitude;
+
+        float safeDistance = moveRadius + obstacleRadius + 0.1f;
+
+        float influenceRadius = safeDistance * 2.5f; 
+        if (distance < influenceRadius && distance > 0.001f)
+        {
+            float influence = 1f - (distance / influenceRadius);
+            influence = Mathf.Pow(influence, 2); 
+
+            if (distance < safeDistance)
+            {
+                influence = Mathf.Lerp(influence, 1f, (safeDistance - distance) / safeDistance);
+                influence = Mathf.Pow(influence, 1.5f); 
+            }
+
+            Vector3 repulsionForce = repulsionDir.normalized * (repulsionStrength * influence);
+            Debug.DrawRay(currentPos, repulsionForce, Color.red);
+
+            return repulsionForce;
+        }
+
+        return Vector3.zero;
+    }
+
+    private float GetObjectRadius(GameObject obj)
+    {
+        Collider collider = obj.GetComponent<Collider>();
+
+        if (collider != null)
+        {
+            return collider.bounds.extents.magnitude;
+        }
+
+        return 0.5f; 
+    }
     private void OnDrawGizmos()
     {
-        Gizmos.color = Color.red;
-        foreach (var obj in currentItems)
+        if (!Application.isPlaying || DecorateObjects == null)
+            return;
+
+        Gizmos.color = Color.yellow;
+        foreach (GameObject obstacle in DecorateObjects)
         {
-            if (obj != null)
-                Gizmos.DrawWireSphere(obj.transform.position, repulsionRange);
+            if (obstacle == null) continue;
+
+            float radius = GetObjectRadius(obstacle);
+            float influenceRadius = radius * 2f;
+
+            Gizmos.DrawWireSphere(obstacle.transform.position, influenceRadius);
         }
     }
 }
