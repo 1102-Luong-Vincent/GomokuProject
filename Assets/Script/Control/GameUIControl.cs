@@ -4,13 +4,47 @@ using UnityEngine.UI;
 
 public class GameUIControl : MonoBehaviour
 {
+
+    public static GameUIControl Instance;
     [SerializeField] TextMeshProUGUI TurnText;
     [SerializeField] Button ShowNumberButton;
     [SerializeField] Button ResignButton;
 
+    [SerializeField] TextMeshProUGUI MoveSpeedText;
+    [SerializeField] Slider MoveSpeedSlider;
+
+
+    public float moveSpeed = 1f;
+
     private void Awake()
     {
+        if (Instance == null) Instance = this;
+
         InitButtons();
+        InitSlider();
+    }
+
+
+    void InitSlider()
+    {
+        MoveSpeedSlider.value = moveSpeed;
+        MoveSpeedSlider.maxValue = 10f;
+        MoveSpeedSlider.minValue = 0f;
+        MoveSpeedSlider.onValueChanged.AddListener(OnSliderValueChanged);
+        SetSpeed(MoveSpeedSlider.value);
+    }
+
+
+    private void OnSliderValueChanged(float value)
+    {
+        SetSpeed(value);
+    }
+
+    void SetSpeed(float speed)
+    {
+        moveSpeed = speed;
+        MoveSpeedText.text = $"Current Move Speed :{speed.ToString("N1")}";
+
     }
 
     #region Buttons

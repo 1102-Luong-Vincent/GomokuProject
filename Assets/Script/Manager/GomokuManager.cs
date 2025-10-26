@@ -126,8 +126,6 @@ public class GomokuManager : MonoBehaviour
         newChess.transform.position = boardPosition;
         currentChessesOnBoard.Add(newChess);
         newChess.Init(gomokuData.CurrentTurn, isShowNumber);
-
-
         return newChess.gameObject;
     }
 
@@ -175,7 +173,7 @@ public class GomokuManager : MonoBehaviour
         aiThinking = false;
     }
 
-    private IEnumerator MovePieceAlongPath(List<(int x, int y)> Path, float stepDelay = 1f)
+    private IEnumerator MovePieceAlongPath(List<(int x, int y)> Path)
     {
         if (Path == null || Path.Count == 0) yield break;
 
@@ -191,14 +189,15 @@ public class GomokuManager : MonoBehaviour
         {
             Vector3 targetPos = deskControl.GetGridCell(item.x, item.y).transform.position;
             newPiece.transform.position = targetPos;
-            yield return new WaitForSeconds(stepDelay);
+            yield return new WaitForSeconds(GameUIControl.Instance.moveSpeed);
         }
 
 
-        GomoKuType result = gomokuData.CheckGameState(x, y);
+        GomoKuType result = gomokuData.CheckGameState(FindPathLastPoint(Path).Item1, FindPathLastPoint(Path).Item2);
         if (result != GomoKuType.None)
         {
             GameManager.Instance.EndGame(result);
+            isMoving = false;
             yield break;
         }
 
@@ -216,10 +215,17 @@ public class GomokuManager : MonoBehaviour
 
     bool PlaceChess(List<(int x,int y)> Path)
     {
+        int lastX = FindPathLastPoint(Path).Item1;
+        int lastY = FindPathLastPoint(Path).Item2;
+        return gomokuData.PlaceChess(lastX, lastY);
+    }
+
+    (int,int) FindPathLastPoint(List<(int x, int y)> Path)
+    {
         var last = Path[Path.Count - 1];
         int lastX = last.x;
         int lastY = last.y;
-        return gomokuData.PlaceChess(lastX, lastY);
+        return last;
     }
 
 
