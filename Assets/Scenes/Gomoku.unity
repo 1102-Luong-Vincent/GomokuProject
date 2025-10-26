@@ -397,7 +397,7 @@ MonoBehaviour:
   Decorate: {fileID: 1268045668}
   attractionStrength: 5
   repulsionStrength: 3
-  repulsionRange: 2
+  waypointTimeout: 3
 --- !u!4 &79525026
 Transform:
   m_ObjectHideFlags: 0
