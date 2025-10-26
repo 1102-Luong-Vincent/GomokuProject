@@ -102,7 +102,7 @@ public static class AStarAlgorithm
                 {
                     continue;
                 }
-                if (board[neighbor.x, neighbor.y] != GomoKuType.None)
+                if (board[neighbor.x, neighbor.y] != GomoKuType.None && neighbor != endNode)
                 {
                     continue;
                 }
