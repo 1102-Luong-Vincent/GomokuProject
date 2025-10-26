@@ -1,6 +1,8 @@
+using NUnit.Framework;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -64,7 +66,6 @@ public class GomokuManager : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0))
         {
-            // ??????????????????????
             if (!GameManager.Instance.IsPlayingGame() || !gomokuData.IsPlayerTurn() || aiThinking || isMoving)
                 return;
 
@@ -117,7 +118,6 @@ public class GomokuManager : MonoBehaviour
 
     GameObject CreateChess(Vector3 boardPosition, int x, int y)
     {
-        if (!gomokuData.PlaceChess(x, y)) return null;
         AudioManager.Instance.PlayClick();
 
         bool isBlackTurn = gomokuData.IsBlackTurn();
@@ -127,22 +127,13 @@ public class GomokuManager : MonoBehaviour
         currentChessesOnBoard.Add(newChess);
         newChess.Init(gomokuData.CurrentTurn, isShowNumber);
 
-        GomoKuType result = gomokuData.CheckGameState(x, y);
-        if (result != GomoKuType.None)
-        {
-            GameManager.Instance.EndGame(result);
-            return null;
-        }
-
-        gomokuData.NextTurn();
-
-        if (!gomokuData.IsPlayerTurn())
-        {
-            AIMove(GomokuConstants.AIThinkTime);
-        }
 
         return newChess.gameObject;
     }
+
+
+
+
 
     public void SetCurrentLevel(int newLevel)
     {
@@ -188,6 +179,8 @@ public class GomokuManager : MonoBehaviour
     {
         if (Path == null || Path.Count == 0) yield break;
 
+        if (!PlaceChess(Path)) yield break;
+
         isMoving = true;
 
         int x = Path[0].Item1, y = Path[0].Item2;
@@ -201,8 +194,35 @@ public class GomokuManager : MonoBehaviour
             yield return new WaitForSeconds(stepDelay);
         }
 
+
+        GomoKuType result = gomokuData.CheckGameState(x, y);
+        if (result != GomoKuType.None)
+        {
+            GameManager.Instance.EndGame(result);
+            yield break;
+        }
+
+        gomokuData.NextTurn();
+
+        if (!gomokuData.IsPlayerTurn())
+        {
+            AIMove(GomokuConstants.AIThinkTime);
+        }
+
+
         isMoving = false; 
     }
+
+
+    bool PlaceChess(List<(int x,int y)> Path)
+    {
+        var last = Path[Path.Count - 1];
+        int lastX = last.x;
+        int lastY = last.y;
+        return gomokuData.PlaceChess(lastX, lastY);
+    }
+
+
 
     private (int x, int y) AIRandomMove()
     {
