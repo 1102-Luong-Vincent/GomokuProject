@@ -120,9 +120,9 @@ public class GomokuManager : MonoBehaviour
         return gomokuData.GetPlayerColor();
     }
 
-    void CreateChess(Vector3 boardPosition, int x, int y)
+    GameObject CreateChess(Vector3 boardPosition, int x, int y)
     {
-        if (!gomokuData.PlaceChess(x, y)) return;
+        if (!gomokuData.PlaceChess(x, y)) return null;
         AudioManager.Instance.PlayClick();
 
         bool isBlackTurn = gomokuData.IsBlackTurn();
@@ -136,7 +136,7 @@ public class GomokuManager : MonoBehaviour
         if (result != GomoKuType.None)
         {
             GameManager.Instance.EndGame(result);
-            return;
+            return null;
         }
 
         gomokuData.NextTurn();
@@ -145,7 +145,13 @@ public class GomokuManager : MonoBehaviour
         {
             AIMove(GomokuConstants.AIThinkTime);
         }
+
+        return newChess.gameObject;
     }
+
+
+
+
 
     public void SetCurrentLevel(int newLevel)
     {
@@ -159,6 +165,34 @@ public class GomokuManager : MonoBehaviour
         StartCoroutine(AIMoveCoroutines(thinkTime));
     }
 
+    //private IEnumerator AIMoveCoroutines(float thinkTime)
+    //{
+    //    if (aiThinking) yield break;
+    //    aiThinking = true;
+
+    //    yield return new WaitForSeconds(thinkTime);
+
+    //    (int x, int y) = GomokuAI.Instance.FindBestMoveByMinMax(
+    //        gomokuData.GetBoard(),
+    //        gomokuData.GetAIColor(),
+    //        currentLevel
+    //    );
+
+    //    if (x == -1 || y == -1)
+    //    {
+    //        aiThinking = false;
+    //        yield break;
+    //    }
+
+    //    Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
+    //    cellCenter.y = GomokuConstants.chessPositionY;
+    //    CreateChess(cellCenter, x, y);
+
+    //    aiThinking = false;
+    //}
+
+
+
     private IEnumerator AIMoveCoroutines(float thinkTime)
     {
         if (aiThinking) yield break;
@@ -166,24 +200,35 @@ public class GomokuManager : MonoBehaviour
 
         yield return new WaitForSeconds(thinkTime);
 
-        (int x, int y) = GomokuAI.Instance.FindBestMoveByMinMax(
+        List<(int , int)> Path = GomokuAI.Instance.FindBestMovePathByMinMax(
             gomokuData.GetBoard(),
             gomokuData.GetAIColor(),
             currentLevel
         );
 
-        if (x == -1 || y == -1)
+        int x = Path[0].Item1, y = Path[0].Item2;
+        Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
+        GameObject newPiece = CreateChess(cellCenter, x, y);
+
+        foreach (var item in Path)
         {
-            aiThinking = false;
-            yield break;
+            newPiece.transform.position = deskControl.GetGridCell(item.Item1, item.Item2).transform.position;
+            yield return new WaitForSeconds(1f);
         }
 
-        Vector3 cellCenter = deskControl.GetGridCell(x, y).transform.position;
-        cellCenter.y = GomokuConstants.chessPositionY;
-        CreateChess(cellCenter, x, y);
-
         aiThinking = false;
+
     }
+
+
+
+
+
+
+
+
+
+
 
     private (int x, int y) AIRandomMove()
     {

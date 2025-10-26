@@ -2,6 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using System;
 using System.Collections.Generic;
+using static AStarAlgorithm;
 
 public class GomokuAI : MonoBehaviour
 {
@@ -16,6 +17,43 @@ public class GomokuAI : MonoBehaviour
         }
         Instance = this;
     }
+
+
+
+
+    public List<(int,int)> FindBestMovePathByMinMax(GomoKuType[,] board, GomoKuType aiPiece, int depth)
+    {
+        (int, int) bestMove = (-1, -1);
+        int bestScore = int.MinValue;
+
+        GomoKuType playerPiece = GetPlayerPiece(aiPiece);
+
+        var moves = GetSmartMoves(board);
+
+        foreach (var move in moves)
+        {
+            board[move.x, move.y] = aiPiece;
+
+            int score = MinMax(board, depth, false, aiPiece, playerPiece, int.MinValue, int.MaxValue);
+
+            board[move.x, move.y] = GomoKuType.None;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestMove = move;
+            }
+        }
+
+        if (bestMove == (-1, -1) && moves.Count > 0)
+        {
+            bestMove = moves[0];
+        }
+
+        return AStarAlgorithm.AStarFindPath(board,bestMove);
+    }
+
+
 
     public (int, int) FindBestMoveByMinMax(GomoKuType[,] board, GomoKuType aiPiece, int depth)
     {
@@ -48,6 +86,18 @@ public class GomokuAI : MonoBehaviour
 
         return bestMove;
     }
+
+
+
+
+
+
+
+
+
+
+
+
 
     static GomoKuType GetPlayerPiece(GomoKuType aiPiece)
     {
