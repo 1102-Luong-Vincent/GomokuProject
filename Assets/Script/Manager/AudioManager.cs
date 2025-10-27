@@ -20,7 +20,6 @@ public class AudioManager : MonoBehaviour
 
     private void Awake()
     {
-        // 保证单例
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);

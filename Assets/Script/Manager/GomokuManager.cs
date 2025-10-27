@@ -90,7 +90,7 @@ public class GomokuManager : MonoBehaviour
     {
         (int, int) endPoint = (x, y);
         List<(int, int)> Path = AStarAlgorithm.AStarFindWayPoint(gomokuData.GetBoard(), endPoint);
-        StartCoroutine(MovePieceAlongPath(Path));
+        StartCoroutine(MovePiecesGroupToSameTarget(Path));
     }
 
     void ClearBoard()
@@ -168,38 +168,105 @@ public class GomokuManager : MonoBehaviour
             yield break;
         }
 
-        yield return StartCoroutine(MovePieceAlongPath(Path));
+        yield return StartCoroutine(MovePiecesGroupToSameTarget(Path));
 
         aiThinking = false;
     }
 
-    private IEnumerator MovePieceAlongPath(List<(int x, int y)> Path)
+    //private IEnumerator MovePieceAlongPath(List<(int x, int y)> Path)
+    //{
+    //    if (Path == null || Path.Count == 0)
+    //        yield break;
+
+    //    if (!PlaceChess(Path))
+    //        yield break;
+
+    //    isMoving = true;
+
+    //    int startX = Path[0].x, startY = Path[0].y;
+    //    Vector3 startPos = deskControl.GetGridCell(startX, startY).transform.position;
+    //    GameObject newPiece = CreateChess(startPos, startX, startY);
+    //    List<Vector3> waypoints = new List<Vector3>();
+    //    foreach (var point in Path)
+    //    {
+    //        Vector3 pos = deskControl.GetGridCell(point.x, point.y).transform.position;
+    //        waypoints.Add(pos);
+    //    }
+
+    //    PotentialFieldsManager.Instance.AddCurrentItems(newPiece);
+    //    yield return StartCoroutine(PotentialFieldsManager.Instance.StartPFMovement(waypoints, newPiece));
+
+
+
+    //    var last = FindPathLastPoint(Path);
+    //    GomoKuType result = gomokuData.CheckGameState(last.Item1, last.Item2);
+    //    if (result != GomoKuType.None)
+    //    {
+    //        GameManager.Instance.EndGame(result);
+    //        isMoving = false;
+    //        yield break;
+    //    }
+
+    //    gomokuData.NextTurn();
+
+    //    if (!gomokuData.IsPlayerTurn())
+    //        AIMove(GomokuConstants.AIThinkTime);
+
+    //    isMoving = false;
+    //}
+
+    private IEnumerator MovePiecesGroupToSameTarget(List<(int x, int y)> Path, int pieceCount = 5)
     {
         if (Path == null || Path.Count == 0)
             yield break;
 
+        // ???????
         if (!PlaceChess(Path))
             yield break;
 
         isMoving = true;
 
+        // ?????
         int startX = Path[0].x, startY = Path[0].y;
+        int endX = Path[Path.Count - 1].x, endY = Path[Path.Count - 1].y;
+
         Vector3 startPos = deskControl.GetGridCell(startX, startY).transform.position;
-        GameObject newPiece = CreateChess(startPos, startX, startY);
-        List<Vector3> waypoints = new List<Vector3>();
-        foreach (var point in Path)
+        Vector3 targetPos = deskControl.GetGridCell(endX, endY).transform.position;
+
+        List<GameObject> pieces = new List<GameObject>();
+        for (int i = 0; i < pieceCount; i++)
         {
-            Vector3 pos = deskControl.GetGridCell(point.x, point.y).transform.position;
-            waypoints.Add(pos);
+            Vector3 offset = new Vector3(
+                UnityEngine.Random.Range(-0.2f, 0.2f),
+                0f,
+                UnityEngine.Random.Range(-0.2f, 0.2f)
+            );
+            GameObject newPiece = CreateChess(startPos + offset, startX, startY);
+            pieces.Add(newPiece);
+            PotentialFieldsManager.Instance.AddCurrentItems(newPiece);
         }
 
-        PotentialFieldsManager.Instance.AddCurrentItems(newPiece);
-        yield return StartCoroutine(PotentialFieldsManager.Instance.StartPFMovement(waypoints, newPiece));
+        List<IEnumerator> moveCoroutines = new List<IEnumerator>();
+        foreach (var piece in pieces)
+        {
+            List<Vector3> waypoints = new List<Vector3>();
+            foreach (var point in Path)
+            {
+                Vector3 pos = deskControl.GetGridCell(point.x, point.y).transform.position;
+                pos += new Vector3(UnityEngine.Random.Range(-0.1f, 0.1f), 0, UnityEngine.Random.Range(-0.1f, 0.1f));
+                waypoints.Add(pos);
+            }
+            moveCoroutines.Add(PotentialFieldsManager.Instance.StartPFMovement(waypoints, piece));
+        }
 
+        List<Coroutine> running = new List<Coroutine>();
+        foreach (var c in moveCoroutines)
+            running.Add(StartCoroutine(c));
 
+        foreach (var coroutine in running)
+            yield return coroutine;
 
-        var last = FindPathLastPoint(Path);
-        GomoKuType result = gomokuData.CheckGameState(last.Item1, last.Item2);
+        GomoKuType result = gomokuData.CheckGameState(endX, endY);
         if (result != GomoKuType.None)
         {
             GameManager.Instance.EndGame(result);
@@ -214,13 +281,6 @@ public class GomokuManager : MonoBehaviour
 
         isMoving = false;
     }
-
-
-
-
-
-
-
 
 
 
