@@ -78,7 +78,7 @@ public class GameUIControl : MonoBehaviour
 
     private void Start()
     {
-        GomokuManager.Instance.gomokuData.OnGomokuDataChanged += UpdateTurnText;
+        GomokuManager.Instance.GetGomokuData().OnGomokuDataChanged += UpdateTurnText;
         UpdateTurnText();
     }
 
@@ -90,7 +90,7 @@ public class GameUIControl : MonoBehaviour
 
     private void UpdateTurnText()
     {
-        var data = GomokuManager.Instance.gomokuData;
+        var data = GomokuManager.Instance.GetGomokuData();
         int current = data.CurrentTurn;
 
         bool isPlayerTurn = data.IsPlayerTurn();
@@ -123,8 +123,8 @@ public class GameUIControl : MonoBehaviour
     }
     private void OnDestroy()
     {
-        if (GomokuManager.Instance.gomokuData != null)
-            GomokuManager.Instance.gomokuData.OnGomokuDataChanged -= UpdateTurnText;
+        if (GomokuManager.Instance.GetGomokuData() != null)
+            GomokuManager.Instance.GetGomokuData().OnGomokuDataChanged -= UpdateTurnText;
     }
 
 }

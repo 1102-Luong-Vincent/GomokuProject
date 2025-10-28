@@ -10,7 +10,7 @@ public class DeskConstants
 
 public class DeskControl : MonoBehaviour
 {
-
+    public static DeskControl Instance;
     [SerializeField] Transform DeckGridDetection;
     [SerializeField] Transform startPoint;
     [SerializeField] Transform endPoint;
@@ -18,10 +18,16 @@ public class DeskControl : MonoBehaviour
 
     private GameObject[,] gridCells;
 
-
-    void Start()
+    private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
         InitDesk();
+
     }
 
 
@@ -49,7 +55,6 @@ public class DeskControl : MonoBehaviour
                 if (cell.GetComponent<BoxCollider>() == null)
                 {
                     var col = cell.AddComponent<BoxCollider>();
-
                     col.center = Vector3.zero;
                 }
             }

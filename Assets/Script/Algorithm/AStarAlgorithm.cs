@@ -1,276 +1,219 @@
-using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
-
-public static class AStarAlgorithm
+public class MultiAStarPaths
 {
-    class Node
-    {
-        public int x, y;
-        public float hCost, gCost;
-        public Node parent;
-        public float fCost => hCost + gCost;
+    public (int, int) TargetPoint;
+    public List<Vector3> MainPath;
+    public List<List<Vector3>> SurroundPaths;
+}
 
-        public Node(int x, int y)
+public class AStarAlgorithm : MonoBehaviour
+{
+    public static AStarAlgorithm Instance;
+
+    [SerializeField] private Collider BoardCollider;
+    [SerializeField] private LayerMask obstacleMask;
+    [SerializeField] private int gridCountX = 15;
+    [SerializeField] private int gridCountY = 15;
+
+    private Node[,] grid;
+    private float cellSize;
+    private Vector3 origin;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this) Destroy(gameObject);
+        Instance = this;
+    }
+
+    private void Start() => BuildGrid();
+
+    private class Node
+    {
+        public Vector3 worldPos;
+        public bool walkable;
+        public Node parent;
+        public float gCost, hCost;
+        public int x, y;
+        public float fCost => gCost + hCost;
+
+        public Node(Vector3 pos, bool walkable, int x, int y)
         {
+            worldPos = pos;
+            this.walkable = walkable;
             this.x = x;
             this.y = y;
+            gCost = float.MaxValue;
+            parent = null;
         }
     }
 
-    public static List<(int, int)> AStarFindWayPoint(GomoKuType[,] board, (int, int) endPoint)
+    public void BuildGrid()
     {
-        return FindWayPoints(board, endPoint);
+        if (BoardCollider == null) return;
+
+        Bounds b = BoardCollider.bounds;
+        Vector3 firstCellPos = DeskControl.Instance.GetGridCell(0, 0).transform.position;
+        origin = new Vector3(firstCellPos.x, b.min.y, firstCellPos.z);
+        cellSize = Mathf.Min(b.size.x / gridCountX, b.size.z / gridCountY);
+
+        grid = new Node[gridCountX, gridCountY];
+
+        for (int x = 0; x < gridCountX; x++)
+        {
+            for (int y = 0; y < gridCountY; y++)
+            {
+                Vector3 worldPos = origin + new Vector3(x * cellSize, 0, y * cellSize);
+                bool walkable = !Physics.CheckBox(worldPos, Vector3.one * (cellSize * 0.4f), Quaternion.identity, obstacleMask);
+                grid[x, y] = new Node(worldPos, walkable, x, y);
+            }
+        }
     }
 
-
-
-    private static List<(int, int)> FindWayPoints(GomoKuType[,] board, (int, int) endPoint)
+    public MultiAStarPaths GetPathsToTarget((int, int) targetPoint, int surroundCount = 4)
     {
-        int width = board.GetLength(0);
-        int height = board.GetLength(1);
-
-        Node[,] nodes = new Node[width, height];
-        for (int x = 0; x < width; x++)
+        MultiAStarPaths result = new MultiAStarPaths
         {
-            for (int y = 0; y < height; y++)
-                nodes[x, y] = new Node(x, y);
-        }
+            TargetPoint = targetPoint,
+            SurroundPaths = new List<List<Vector3>>()
+        };
 
-        List<(int, int)> fullPath = new List<(int, int)>();
-        List<Node> openSet = new List<Node>();
-        HashSet<Node> closedSet = new HashSet<Node>();
+        if (grid == null) BuildGrid();
 
-        Node endNode = nodes[endPoint.Item1, endPoint.Item2];
+        Vector3 targetWorldPos = DeskControl.Instance.GetGridCell(targetPoint.Item1, targetPoint.Item2).transform.position;
+        Node targetNode = GetNearestNode(targetWorldPos);
+        targetNode.walkable = true;
 
-        for (int i = 0; i < width; i++)
+        List<Node> outerNodes = GetOuterEdgeNodes();
+        if (outerNodes.Count == 0) return result;
+
+        Node bestStart = null;
+        float bestDist = float.MaxValue;
+        foreach (var start in outerNodes)
         {
-            if (board[i, 0] == GomoKuType.None)
-                openSet.Add(nodes[i, 0]);
-            if (board[i, height - 1] == GomoKuType.None)
-                openSet.Add(nodes[i, height - 1]);
-        }
-        for (int j = 0; j < height; j++)
-        {
-            if (board[0, j] == GomoKuType.None)
-                openSet.Add(nodes[0, j]);
-            if (board[width - 1, j] == GomoKuType.None)
-                openSet.Add(nodes[width - 1, j]);
-        }
-
-        foreach (var node in openSet)
-        {
-            node.gCost = 0;
-            node.hCost = Mathf.Abs(node.x - endNode.x) + Mathf.Abs(node.y - endNode.y);
-            node.parent = null;
-        }
-
-        while (openSet.Count > 0)
-        {
-            Node current = openSet[0];
-            for (int i = 1; i < openSet.Count; i++)
+            var path = FindPath(start, targetNode);
+            if (path.Count == 0) continue;
+            float dist = PathLength(path);
+            if (dist < bestDist)
             {
-                if (openSet[i].fCost < current.fCost)
-                    current = openSet[i];
-            }
-
-            if (current == endNode)
-            {
-                Node c = current;
-                while (c != null)
-                {
-                    fullPath.Add((c.x, c.y));
-                    c = c.parent;
-                }
-                fullPath.Reverse();
-                return ExtractWayPoints(fullPath);
-            }
-
-            openSet.Remove(current);
-            closedSet.Add(current);
-
-            foreach (var neighbor in GetNeighbors(nodes, current, width, height))
-            {
-                if (closedSet.Contains(neighbor))
-                    continue;
-                if (board[neighbor.x, neighbor.y] != GomoKuType.None && neighbor != endNode)
-                    continue;
-
-                float G = current.gCost + 1;
-                if (!openSet.Contains(neighbor) || G < neighbor.gCost)
-                {
-                    neighbor.gCost = G;
-                    neighbor.hCost = Mathf.Abs(neighbor.x - endNode.x) + Mathf.Abs(neighbor.y - endNode.y);
-                    neighbor.parent = current;
-
-                    if (!openSet.Contains(neighbor))
-                        openSet.Add(neighbor);
-                }
+                bestDist = dist;
+                result.MainPath = path;
+                bestStart = start;
             }
         }
 
-        return new List<(int, int)>();
+        var randomOuter = outerNodes.OrderBy(x => Random.value).Where(n => n != bestStart).Take(surroundCount);
+        foreach (var s in randomOuter)
+        {
+            var path = FindPath(s, targetNode);
+            if (path.Count > 0)
+                result.SurroundPaths.Add(path);
+        }
+
+        return result;
     }
 
-    private static List<(int, int)> ExtractWayPoints(List<(int, int)> fullPath)
-    {
-        if (fullPath.Count <= 2)
-            return fullPath;
-
-        List<(int, int)> wayPoints = new List<(int, int)>();
-        wayPoints.Add(fullPath[0]);
-
-        for (int i = 1; i < fullPath.Count - 1; i++)
-        {
-            var prev = fullPath[i - 1];
-            var curr = fullPath[i];
-            var next = fullPath[i + 1];
-
-            int dx1 = curr.Item1 - prev.Item1;
-            int dy1 = curr.Item2 - prev.Item2;
-            int dx2 = next.Item1 - curr.Item1;
-            int dy2 = next.Item2 - curr.Item2;
-
-            if (dx1 != dx2 || dy1 != dy2)
-            {
-                wayPoints.Add(curr);
-            }
-        }
-
-        wayPoints.Add(fullPath.Last());
-        return wayPoints;
-    }
-
-
-
-    public static List<(int, int)> AStarFindPath(GomoKuType[,] board, (int, int) endPoint)
-    {
-        int width = board.GetLength(0);
-        int height = board.GetLength(1);
-
-        Node[,] nodes = new Node[width, height];
-
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                nodes[x, y] = new Node(x, y);
-            }
-        }
-        List<(int, int)> Path = new List<(int, int)>();
-
-        List<Node> openSet = new List<Node>();
-        HashSet<Node> closedSet = new HashSet<Node>();
-
-        Node endNode = nodes[endPoint.Item1, endPoint.Item2];
-
-        for (int i = 0; i < width; i++)
-        {
-            if (board[i, 0] == GomoKuType.None)
-            {
-                openSet.Add(nodes[i, 0]);
-            }
-            if (board[i, height - 1] == GomoKuType.None)
-            {
-                openSet.Add(nodes[i, height - 1]);
-            }
-        }
-        for (int j = 0; j < height; j++)
-        {
-            if (board[0, j] == GomoKuType.None)
-            {
-                openSet.Add(nodes[0, j]);
-            }
-            if (board[width - 1, j] == GomoKuType.None)
-            {
-                openSet.Add(nodes[width - 1, j]);
-            }
-        }
-        foreach (var node in openSet)
-        {
-            node.gCost = 0;
-            node.hCost = Mathf.Abs(node.x - endNode.x) + Mathf.Abs(node.y - endNode.y);
-            node.parent = null;
-        }
-
-        while (openSet.Count > 0)
-        {
-            //Node current = openSet.OrderBy(n => n.fCost).First();
-            Node current = openSet[0];
-
-            for (int i = 1; i < openSet.Count; i++)
-            {
-
-                if (openSet[i].fCost < current.fCost)
-                {
-                    current = openSet[i];
-                }
-            }
-            if (current == endNode)
-            {
-                Node c = current;
-
-                while (c != null)
-                {
-                    Path.Add((c.x, c.y));
-                    c = c.parent;
-                }
-                Path.Reverse();
-                return Path;
-            }
-            openSet.Remove(current);
-            closedSet.Add(current);
-
-            foreach (var neighbor in GetNeighbors(nodes, current, width, height))
-            {
-                if (closedSet.Contains(neighbor))
-                {
-                    continue;
-                }
-                if (board[neighbor.x, neighbor.y] != GomoKuType.None && neighbor != endNode)
-                {
-                    continue;
-                }
-
-                float G = current.gCost + 1;
-
-                if (!openSet.Contains(neighbor) || G < neighbor.gCost)
-                {
-                    neighbor.gCost = G;
-                    neighbor.hCost = Mathf.Abs(neighbor.x - endNode.x) + Mathf.Abs(neighbor.y - endNode.y);
-                    neighbor.parent = current;
-
-                    if (!openSet.Contains(neighbor))
-                    {
-                        openSet.Add(neighbor);
-                    }
-                }
-            }
-        }
-        return Path;
-    }
-
-    static List<Node> GetNeighbors(Node[,] nodes, Node node, int width, int height)
+    private List<Node> GetNeighbors(Node n)
     {
         List<Node> neighbors = new List<Node>();
-
-        int[,] directions = new int[,]
-        {
-            { 1, 0 }, { -1, 0 }, //right and left
-            { 0, 1 }, { 0, -1 } //up, down
-        };
+        int[] dx = { -1, 1, 0, 0 };
+        int[] dy = { 0, 0, -1, 1 };
 
         for (int i = 0; i < 4; i++)
         {
-            int xNode = node.x + directions[i, 0];
-            int yNode = node.y + directions[i, 1];
-
-            if (xNode >= 0 && xNode < width && yNode >= 0 && yNode < height)
-            {
-                neighbors.Add(nodes[xNode, yNode]);
-            }
+            int nx = n.x + dx[i];
+            int ny = n.y + dy[i];
+            if (nx >= 0 && nx < gridCountX && ny >= 0 && ny < gridCountY)
+                neighbors.Add(grid[nx, ny]);
         }
         return neighbors;
+    }
+
+    private List<Vector3> FindPath(Node start, Node end)
+    {
+        foreach (var n in grid) { n.gCost = float.MaxValue; n.parent = null; }
+
+        start.gCost = 0;
+        start.hCost = Vector3.Distance(start.worldPos, end.worldPos);
+
+        List<Node> open = new List<Node> { start };
+        HashSet<Node> closed = new HashSet<Node>();
+
+        while (open.Count > 0)
+        {
+            Node current = open.OrderBy(n => n.fCost).First();
+            if (current == end) return RetracePath(start, end);
+
+            open.Remove(current);
+            closed.Add(current);
+
+            foreach (var neighbor in GetNeighbors(current))
+            {
+                if (!neighbor.walkable || closed.Contains(neighbor)) continue;
+
+                float newCost = current.gCost + Vector3.Distance(current.worldPos, neighbor.worldPos);
+                if (newCost < neighbor.gCost)
+                {
+                    neighbor.gCost = newCost;
+                    neighbor.hCost = Vector3.Distance(neighbor.worldPos, end.worldPos);
+                    neighbor.parent = current;
+                    if (!open.Contains(neighbor)) open.Add(neighbor);
+                }
+            }
+        }
+        return new List<Vector3>();
+    }
+
+    private List<Vector3> RetracePath(Node start, Node end)
+    {
+        List<Vector3> path = new List<Vector3>();
+        Node current = end;
+        while (current != null)
+        {
+            path.Add(current.worldPos);
+            if (current == start) break;
+            current = current.parent;
+        }
+        path.Reverse();
+        return path;
+    }
+
+    private List<Node> GetOuterEdgeNodes()
+    {
+        List<Node> edges = new List<Node>();
+        int maxX = gridCountX - 1;
+        int maxY = gridCountY - 1;
+
+        for (int x = 0; x < gridCountX; x++)
+        {
+            edges.Add(grid[x, 0]);
+            edges.Add(grid[x, maxY]);
+        }
+        for (int y = 1; y < gridCountY - 1; y++)
+        {
+            edges.Add(grid[0, y]);
+            edges.Add(grid[maxX, y]);
+        }
+
+        return edges.Where(n => n.walkable).ToList();
+    }
+
+    private float PathLength(List<Vector3> path)
+    {
+        float len = 0f;
+        for (int i = 1; i < path.Count; i++)
+            len += Vector3.Distance(path[i - 1], path[i]);
+        return len;
+    }
+
+    private Node GetNearestNode(Vector3 pos)
+    {
+        pos = BoardCollider.bounds.ClosestPoint(pos);
+        Vector3 offset = pos - origin;
+        int x = Mathf.Clamp(Mathf.FloorToInt(offset.x / cellSize), 0, gridCountX - 1);
+        int y = Mathf.Clamp(Mathf.FloorToInt(offset.z / cellSize), 0, gridCountY - 1);
+        return grid[x, y];
     }
 }

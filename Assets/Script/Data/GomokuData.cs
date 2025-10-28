@@ -45,8 +45,7 @@ public class GomokuData
 
     public bool IsPlayerTurn()
     {
-        return (CurrentTurn % 2 == 1 && IsPlayerBlack) ||
-               (CurrentTurn % 2 == 0 && !IsPlayerBlack);
+        return (CurrentTurn % 2 == 1 && IsPlayerBlack) ||(CurrentTurn % 2 == 0 && !IsPlayerBlack);
     }
 
     public bool IsBlackTurn()

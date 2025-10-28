@@ -28,10 +28,10 @@ public class GameManager : MonoBehaviour
 
     public void StartGame(bool isPlayerBlack)
     {
+        isPlaying = true;
         GomokuManager.Instance.StartGame(isPlayerBlack);
         UIManager.Instance.StartGame();
-        PotentialFieldsManager.Instance.ClearCurrentItems();
-        isPlaying = true;
+
     }
 
 
@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviour
     public void EndGame(GomoKuType result)
     {
         isPlaying = false;
+        GomokuManager.Instance.ForceStopAllMovements();
         UIManager.Instance.EndGame(result);
     }
 }

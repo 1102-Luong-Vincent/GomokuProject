@@ -34,9 +34,6 @@ public class GameResultPanelControl : MonoBehaviour
     [SerializeField] Button HardButton;
     
 
-    private bool LevelsButtonVisible = false;
-    private bool StartButtonVisible = false;
-
     private void Awake()
     {
         InitButton();
@@ -79,11 +76,6 @@ public class GameResultPanelControl : MonoBehaviour
 
     void OnStartButtonClick()
     {
-        //StartButtonVisible = !StartButtonVisible;
-
-        //RandomStartButton.gameObject.SetActive(StartButtonVisible);
-        //WhiteStartButton.gameObject.SetActive(StartButtonVisible);
-        //BlackStartButton.gameObject.SetActive(StartButtonVisible);
 
         StartButton.gameObject.SetActive(false);
         LevelsButton.gameObject.SetActive(false);
@@ -114,12 +106,6 @@ public class GameResultPanelControl : MonoBehaviour
 
     void OnLevelsButtonClick()
     {
-        //LevelsButtonVisible = !LevelsButtonVisible;
-
-        //EasyButton.gameObject.SetActive(LevelsButtonVisible);
-        //MediumButton.gameObject.SetActive(LevelsButtonVisible);
-        //HardButton.gameObject.SetActive(LevelsButtonVisible);
-
         LevelsButton.gameObject.SetActive(false);
         StartButton.gameObject.SetActive(false);
 

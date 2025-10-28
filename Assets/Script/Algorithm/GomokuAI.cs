@@ -1,7 +1,8 @@
 using NUnit.Framework;
-using UnityEngine;
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine;
 using static AStarAlgorithm;
 
 public class GomokuAI : MonoBehaviour
@@ -19,20 +20,20 @@ public class GomokuAI : MonoBehaviour
     }
 
 
-    public List<(int, int)> FindBestMovePathWithRetries(GomoKuType[,] board, GomoKuType aiPiece, int depth,int maxRetries = 100)
+    public MultiAStarPaths FindBestMovePathWithRetries(GomoKuType[,] board, GomoKuType aiPiece, int depth,int maxRetries = 100)
     {
-        List<(int, int)> path = null;
+        MultiAStarPaths paths = null;
         int retries = 0;
 
         while (retries < maxRetries)
         {
             var bestMove = FindBestMoveByMinMax(board, aiPiece, depth);
 
-            if (bestMove == (-1, -1))break; 
+            if (bestMove == (-1, -1))break;
 
-            path = AStarAlgorithm.AStarFindWayPoint(board, bestMove);
+            paths = AStarAlgorithm.Instance.GetPathsToTarget(bestMove);
 
-            if (path != null && path.Count > 0)
+            if (paths != null)
             {
                 break;
             }
@@ -41,13 +42,13 @@ public class GomokuAI : MonoBehaviour
             retries++;
         }
 
-        return path;
+        return paths;
     }
 
 
 
 
-    public List<(int,int)> FindBestMovePathByMinMax(GomoKuType[,] board, GomoKuType aiPiece, int depth)
+    public MultiAStarPaths FindBestMovePathByMinMax(GomoKuType[,] board, GomoKuType aiPiece, int depth)
     {
         (int, int) bestMove = (-1, -1);
         int bestScore = int.MinValue;
@@ -76,7 +77,8 @@ public class GomokuAI : MonoBehaviour
             bestMove = moves[0];
         }
 
-        return AStarAlgorithm.AStarFindWayPoint(board,bestMove);
+        return AStarAlgorithm.Instance.GetPathsToTarget(bestMove);
+
     }
 
 

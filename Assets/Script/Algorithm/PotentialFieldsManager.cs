@@ -7,6 +7,9 @@ using System.Collections;
 public class PotentialFieldsManager : MonoBehaviour
 {
     public static PotentialFieldsManager Instance;
+
+    private bool isMovementTimedOut = false;
+
     private List<GameObject> currentItems = new List<GameObject>();
     [SerializeField] Transform Decorate;
     private List<GameObject> DecorateObjects = new List<GameObject>();
@@ -39,6 +42,12 @@ public class PotentialFieldsManager : MonoBehaviour
         }
     }
 
+
+    public void Init()
+    {
+        ClearCurrentItems();
+    }
+
     public void ClearCurrentItems()
     {
         foreach (GameObject item in currentItems)
@@ -55,6 +64,124 @@ public class PotentialFieldsManager : MonoBehaviour
             currentItems.Add(item);
     }
 
+    public void RemoveCurrentItem(GameObject item)
+    {
+        if (item != null && !currentItems.Contains(item))
+            currentItems.Remove(item);
+    }
+
+
+    public IEnumerator StartIndependentPFMovement(List<GameObject> moveObjects, List<List<Vector3>> waypointsList)
+    {
+        if (moveObjects == null || waypointsList == null ||
+            moveObjects.Count == 0 || waypointsList.Count == 0 ||
+            moveObjects.Count != waypointsList.Count)
+            yield break;
+
+        isMovementTimedOut = false;
+
+        Vector3[] finalDestinations = new Vector3[moveObjects.Count];
+        for (int i = 0; i < moveObjects.Count; i++)
+        {
+            if (waypointsList[i] != null && waypointsList[i].Count > 0)
+            {
+                finalDestinations[i] = waypointsList[i][waypointsList[i].Count - 1];
+            }
+        }
+
+        List<Coroutine> movementCoroutines = new List<Coroutine>();
+
+        for (int i = 0; i < moveObjects.Count; i++)
+        {
+            if (moveObjects[i] != null && waypointsList[i] != null && waypointsList[i].Count > 0)
+            {
+                Coroutine moveCoroutine = StartCoroutine(
+                    IndependentPFMovement(moveObjects[i], waypointsList[i])
+                );
+                movementCoroutines.Add(moveCoroutine);
+            }
+        }
+
+        foreach (var coroutine in movementCoroutines)
+        {
+            yield return coroutine;
+        }
+
+        if (isMovementTimedOut)
+        {
+
+            for (int i = 0; i < moveObjects.Count; i++)
+            {
+                if (moveObjects[i] != null && waypointsList[i] != null && waypointsList[i].Count > 0)
+                {
+                    moveObjects[i].transform.position = finalDestinations[i];
+                }
+            }
+        }
+    }
+
+    private IEnumerator IndependentPFMovement(GameObject moveObject, List<Vector3> waypoints)
+    {
+        if (moveObject == null || waypoints == null || waypoints.Count == 0)
+            yield break;
+
+        float moveRadius = GetObjectRadius(moveObject);
+        Vector3 finalDestination = waypoints[waypoints.Count - 1];
+
+        float totalElapsedTime = 0f;
+
+        foreach (Vector3 targetPoint in waypoints)
+        {
+            if (moveObject == null)
+                yield break;
+
+            float waypointElapsedTime = 0f;
+            bool reached = false;
+
+            while (!reached && totalElapsedTime < waypointTimeout)
+            {
+                if (moveObject == null)
+                    yield break;
+
+                Vector3 pos = moveObject.transform.position;
+                float distToTarget = Vector3.Distance(pos, targetPoint);
+
+                if (distToTarget > stopDistance)
+                {
+                    Vector3 velocity = CalculatePotentialFieldVelocity(
+                        moveObject, pos, targetPoint, moveRadius
+                    );
+                    moveObject.transform.position += velocity;
+
+                    waypointElapsedTime += Time.deltaTime;
+                    totalElapsedTime += Time.deltaTime;
+                }
+                else
+                {
+                    reached = true;
+                }
+
+                yield return null;
+            }
+
+            if (totalElapsedTime >= waypointTimeout)
+            {
+                isMovementTimedOut = true;
+
+                if (moveObject != null)
+                {
+                    moveObject.transform.position = finalDestination;
+                }
+
+                yield break;
+            }
+
+            if (moveObject != null)
+            {
+                moveObject.transform.position = targetPoint;
+            }
+        }
+    }
     public IEnumerator StartPFMovement(List<Vector3> waypoints, GameObject moveObject)
     {
         if (waypoints == null || waypoints.Count == 0 || moveObject == null)

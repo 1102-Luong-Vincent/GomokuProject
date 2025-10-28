@@ -397,7 +397,7 @@ MonoBehaviour:
   Decorate: {fileID: 1268045668}
   attractionStrength: 5
   repulsionStrength: 3
-  waypointTimeout: 3
+  waypointTimeout: 60
 --- !u!4 &79525026
 Transform:
   m_ObjectHideFlags: 0
@@ -3181,6 +3181,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1242603194}
   - component: {fileID: 1242603195}
+  - component: {fileID: 1242603196}
   m_Layer: 0
   m_Name: Board
   m_TagString: Untagged
@@ -3260,6 +3261,27 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!65 &1242603196
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1242603193}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 5.85, y: 5.8000016, z: 0.001}
+  m_Center: {x: 0.5, y: 0.5, z: 0.5}
 --- !u!1001 &1265462738
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3928,6 +3950,55 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bgmAudio: {fileID: 991573538}
   sfxAudio: {fileID: 539067162}
+--- !u!1 &1472886595
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1472886597}
+  - component: {fileID: 1472886596}
+  m_Layer: 0
+  m_Name: Astar Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1472886596
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1472886595}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68ec8a4955028fb43b3097d73136c66e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  BoardCollider: {fileID: 1242603196}
+  cellSize: 1
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 64
+--- !u!4 &1472886597
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1472886595}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.0274527, y: 0.016548596, z: 0.0012731235}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1553657780
 GameObject:
   m_ObjectHideFlags: 0
@@ -5449,3 +5520,4 @@ SceneRoots:
   - {fileID: 1447047647}
   - {fileID: 1236703935}
   - {fileID: 79525026}
+  - {fileID: 1472886597}
