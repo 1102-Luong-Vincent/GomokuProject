@@ -113,6 +113,14 @@ public class GameUIControl : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+    public void ShowGameUI()
+    {
+        gameObject.SetActive(true);
+    }
+    public void HideGameUI()
+    {
+        gameObject.SetActive(false);
+    }
     private void OnDestroy()
     {
         if (GomokuManager.Instance.gomokuData != null)
