@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 public static class ResultPanelConstants
 {
-    public const string GameTitle = "Gomoku Game";
+    public const string GameTitle = "Formation 5";
     public const string DrawTitle = "Draw";
     public const string LoseTitle = "You Lose";
     public const string WinTitle = "You Win";
@@ -25,14 +25,19 @@ public class GameResultPanelControl : MonoBehaviour
     [SerializeField] Button WhiteStartButton;
     [SerializeField] Button ExitButton;
 
+    [SerializeField] Button LevelsButton; 
     [SerializeField] Button EasyButton;
     [SerializeField] Button MediumButton;
     [SerializeField] Button HardButton;
+    
 
-
+    private bool LevelsButtonVisible = false;
     private void Awake()
     {
         InitButton();
+        EasyButton.gameObject.SetActive(false);
+        MediumButton.gameObject.SetActive(false);
+        HardButton.gameObject.SetActive(false);
     }
 
 
@@ -47,6 +52,7 @@ public class GameResultPanelControl : MonoBehaviour
         EasyButton.onClick.AddListener(() => SetLevel(GomokuConstants.EasyLevelDepth));
         MediumButton.onClick.AddListener(() => SetLevel(GomokuConstants.MediumLevelDepth));
         HardButton.onClick.AddListener(() => SetLevel(GomokuConstants.HardLevelDepth));
+        LevelsButton.onClick.AddListener(OnLevelsButtonClick);
         ExitButton.onClick.AddListener(OnExitButtonClick);
 
     }
@@ -74,6 +80,14 @@ public class GameResultPanelControl : MonoBehaviour
         GameManager.Instance.StartGame(false);
     }
 
+    void OnLevelsButtonClick()
+    {
+        LevelsButtonVisible = !LevelsButtonVisible;
+
+        EasyButton.gameObject.SetActive(LevelsButtonVisible);
+        MediumButton.gameObject.SetActive(LevelsButtonVisible);
+        HardButton.gameObject.SetActive(LevelsButtonVisible);
+    }
     void OnExitButtonClick()
     {
         #if UNITY_EDITOR
