@@ -1665,6 +1665,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   GameResultPanelTitle: {fileID: 1851348115}
   LevelText: {fileID: 767039302}
+  gamePanel: {fileID: 613152665}
+  gameUI: {fileID: 107646841}
   RandomStartButton: {fileID: 1913936159}
   BlackStartButton: {fileID: 1367209203}
   WhiteStartButton: {fileID: 885469670}

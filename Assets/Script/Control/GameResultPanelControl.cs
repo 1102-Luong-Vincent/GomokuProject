@@ -18,7 +18,8 @@ public class GameResultPanelControl : MonoBehaviour
 
     [SerializeField] TextMeshProUGUI GameResultPanelTitle;
     [SerializeField] TextMeshProUGUI LevelText;
-
+    [SerializeField] private GameObject gamePanel;
+    [SerializeField] private GameObject gameUI;
 
     [SerializeField] Button RandomStartButton;
     [SerializeField] Button BlackStartButton;
@@ -38,6 +39,9 @@ public class GameResultPanelControl : MonoBehaviour
         EasyButton.gameObject.SetActive(false);
         MediumButton.gameObject.SetActive(false);
         HardButton.gameObject.SetActive(false);
+
+        gamePanel.SetActive(true);
+        gameUI.SetActive(false);
     }
 
 
