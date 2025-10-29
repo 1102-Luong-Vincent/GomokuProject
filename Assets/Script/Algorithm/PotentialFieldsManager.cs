@@ -17,7 +17,7 @@ public class PotentialFieldsManager : MonoBehaviour
     [Header("Potential Field Settings")]
     public float attractionStrength = 10f;
     public float repulsionStrength = 9f;
-    private float stopDistance = 0.0001f;
+    private float stopDistance = 0.01f;//0.0001f;
 
     [Header("Timeout Settings")]
     public float waypointTimeout = 5f; 
@@ -241,6 +241,12 @@ public class PotentialFieldsManager : MonoBehaviour
     {
         Vector3 attractionForce = CalculateAttractionForce(currentPos, targetPos);
         Vector3 totalRepulsion = CalculateTotalRepulsionForce(moveObject, currentPos, moveRadius);
+
+        float maxRepulsionMagnitude = attractionForce.magnitude * 0.8f;
+
+        if (totalRepulsion.magnitude > maxRepulsionMagnitude)
+            totalRepulsion = totalRepulsion.normalized * maxRepulsionMagnitude;
+
         Vector3 totalForce = attractionForce + totalRepulsion;
         float speed = GameUIControl.Instance.GetMoveSpeed();
         Vector3 velocity = totalForce.normalized * speed * Time.deltaTime;

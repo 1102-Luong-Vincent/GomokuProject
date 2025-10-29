@@ -3980,10 +3980,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   BoardCollider: {fileID: 1242603196}
-  cellSize: 1
   obstacleMask:
     serializedVersion: 2
     m_Bits: 64
+  gridCountX: 15
+  gridCountY: 15
 --- !u!4 &1472886597
 Transform:
   m_ObjectHideFlags: 0

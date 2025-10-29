@@ -188,6 +188,87 @@ public class GomokuManager : MonoBehaviour
     }
 
 
+    //private IEnumerator MovePiecePaths(MultiAStarPaths Paths)
+    //{
+    //    if (Paths == null || Paths.MainPath == null || Paths.MainPath.Count == 0)
+    //        yield break;
+
+    //    if (!PlaceChess(Paths.TargetPoint))
+    //        yield break;
+
+    //    isMoving = true;
+
+    //    List<GameObject> sidePieces = new List<GameObject>();
+    //    GameObject mainPiece = null;
+
+    //    var mainPath = Paths.MainPath;
+    //    int startX = Paths.TargetPoint.Item1, startY = Paths.TargetPoint.Item2;
+    //    Vector3 startPos = deskControl.GetGridCell(startX, startY).transform.position;
+
+    //    mainPiece = CreateChess(startPos);
+
+    //    List<Vector3> mainWaypoints = Paths.MainPath;
+    //    //foreach (var point in mainPath)
+    //    //    mainWaypoints.Add(deskControl.GetGridCell(point.Item1, point.Item2).transform.position);
+
+    //    List<GameObject> allPieces = new List<GameObject> { mainPiece };
+    //    List<List<Vector3>> allWaypoints = new List<List<Vector3>> { mainWaypoints };
+
+    //    PotentialFieldsManager.Instance.AddCurrentItems(mainPiece);
+
+    //    if (Paths.SurroundPaths != null && Paths.SurroundPaths.Count > 0)
+    //    {
+    //        foreach (var path in Paths.SurroundPaths)
+    //        {
+    //            if (path == null || path.Count == 0)
+    //                continue;
+
+    //            Vector3 sPos = path[0];
+    //            GameObject sidePiece = CreateChess(sPos);
+    //            sidePieces.Add(sidePiece);
+
+    //            List<Vector3> sideWaypoints = new List<Vector3>();
+
+    //            allPieces.Add(sidePiece);
+    //            allWaypoints.Add(sideWaypoints);
+
+    //            PotentialFieldsManager.Instance.AddCurrentItems(sidePiece);
+    //        }
+    //    }
+
+    //    yield return StartCoroutine(
+    //        PotentialFieldsManager.Instance.StartIndependentPFMovement(allPieces, allWaypoints)
+    //    );
+
+    //    Vector3 finalPos = deskControl.GetGridCell(Paths.TargetPoint.Item1, Paths.TargetPoint.Item2).transform.position;
+
+    //    foreach (var piece in sidePieces)
+    //        if (piece != null) piece.transform.position = finalPos;
+
+    //    GomoKuType result = gomokuData.CheckGameState(Paths.TargetPoint.Item1, Paths.TargetPoint.Item2);
+    //    if (result != GomoKuType.None)
+    //    {
+    //        GameManager.Instance.EndGame(result);
+    //        foreach (var s in sidePieces)
+    //            Destroy(s);
+    //        isMoving = false;
+    //        yield break;
+    //    }
+
+    //    foreach (var s in sidePieces)
+    //    {
+    //        PotentialFieldsManager.Instance.RemoveCurrentItem(s);
+    //        Destroy(s);
+    //    }
+
+    //    gomokuData.NextTurn();
+
+    //    if (!gomokuData.IsPlayerTurn())
+    //        AIMove(GomokuConstants.AIThinkTime);
+
+    //    isMoving = false;
+    //}
+
     private IEnumerator MovePiecePaths(MultiAStarPaths Paths)
     {
         if (Paths == null || Paths.MainPath == null || Paths.MainPath.Count == 0)
@@ -201,15 +282,25 @@ public class GomokuManager : MonoBehaviour
         List<GameObject> sidePieces = new List<GameObject>();
         GameObject mainPiece = null;
 
-        var mainPath = Paths.MainPath;
-        int startX = Paths.TargetPoint.Item1, startY = Paths.TargetPoint.Item2;
-        Vector3 startPos = deskControl.GetGridCell(startX, startY).transform.position;
+        var mainPath = Paths.MainPath; // List<Vector3>
 
-        mainPiece = CreateChess(startPos);
+        // --- SAFETY: ensure path is in start->target order ---
+        // The expected path: first element should be the spawn/start pos (outer edge),
+        // last element should be the target cell world position.
+        Vector3 targetWorld = deskControl.GetGridCell(Paths.TargetPoint.Item1, Paths.TargetPoint.Item2).transform.position;
+        // If last isn't approximately the target, reverse so last == target.
+        if (!ApproximatelyEqual(mainPath[mainPath.Count - 1], targetWorld))
+        {
+            mainPath.Reverse();
+            Debug.Log("[MovePiecePaths] Reversed mainPath so it goes start->target");
+        }
 
-        List<Vector3> mainWaypoints = Paths.MainPath;
-        //foreach (var point in mainPath)
-        //    mainWaypoints.Add(deskControl.GetGridCell(point.Item1, point.Item2).transform.position);
+        // Instantiate the main piece at the START of the path (mainPath[0])
+        Vector3 spawnPos = mainPath[0];
+        mainPiece = CreateChess(spawnPos);
+
+        // Prepare waypoints for movement (already world positions)
+        List<Vector3> mainWaypoints = new List<Vector3>(mainPath);
 
         List<GameObject> allPieces = new List<GameObject> { mainPiece };
         List<List<Vector3>> allWaypoints = new List<List<Vector3>> { mainWaypoints };
@@ -223,11 +314,16 @@ public class GomokuManager : MonoBehaviour
                 if (path == null || path.Count == 0)
                     continue;
 
-                Vector3 sPos = path[0];
+                // Make sure surround path also goes start->target
+                Vector3 lastOfSurround = path[path.Count - 1];
+                if (!ApproximatelyEqual(lastOfSurround, targetWorld))
+                    path.Reverse();
+
+                Vector3 sPos = path[0]; // spawn at path start
                 GameObject sidePiece = CreateChess(sPos);
                 sidePieces.Add(sidePiece);
 
-                List<Vector3> sideWaypoints = new List<Vector3>();
+                List<Vector3> sideWaypoints = new List<Vector3>(path);
 
                 allPieces.Add(sidePiece);
                 allWaypoints.Add(sideWaypoints);
@@ -236,25 +332,31 @@ public class GomokuManager : MonoBehaviour
             }
         }
 
+        // Run PF movement (each piece moves from its start toward the last waypoint which should be target)
         yield return StartCoroutine(
             PotentialFieldsManager.Instance.StartIndependentPFMovement(allPieces, allWaypoints)
         );
 
+        // Ensure all pieces finish exactly at the target cell
         Vector3 finalPos = deskControl.GetGridCell(Paths.TargetPoint.Item1, Paths.TargetPoint.Item2).transform.position;
 
-        foreach (var piece in sidePieces)
+        foreach (var piece in allPieces)
+        {
             if (piece != null) piece.transform.position = finalPos;
+        }
 
+        // Check game state (target cell)
         GomoKuType result = gomokuData.CheckGameState(Paths.TargetPoint.Item1, Paths.TargetPoint.Item2);
         if (result != GomoKuType.None)
         {
             GameManager.Instance.EndGame(result);
             foreach (var s in sidePieces)
-                Destroy(s);
+                if (s != null) Destroy(s);
             isMoving = false;
             yield break;
         }
 
+        // Cleanup side pieces
         foreach (var s in sidePieces)
         {
             PotentialFieldsManager.Instance.RemoveCurrentItem(s);
@@ -269,7 +371,11 @@ public class GomokuManager : MonoBehaviour
         isMoving = false;
     }
 
-  
+    private bool ApproximatelyEqual(Vector3 a, Vector3 b, float eps = 0.001f)
+    {
+        return Vector3.SqrMagnitude(a - b) <= eps * eps;
+    }
+
 
     bool PlaceChess((int x,int y) Point)
     {

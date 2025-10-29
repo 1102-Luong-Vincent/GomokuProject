@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -22,13 +23,26 @@ public class AStarAlgorithm : MonoBehaviour
     private float cellSize;
     private Vector3 origin;
 
+    private List<Vector3> lastPath = null; // for visualization
+
     private void Awake()
     {
-        if (Instance != null && Instance != this) Destroy(gameObject);
-        Instance = this;
+        if (Instance != null && Instance != this)
+            Destroy(gameObject);
+        else
+            Instance = this;
     }
 
-    private void Start() => BuildGrid();
+    private IEnumerator Start()
+    {
+        // Wait until DeskControl is initialized and grid cells exist
+        yield return new WaitUntil(() => DeskControl.Instance != null && DeskControl.Instance.GetGridCell(0, 0) != null);
+
+        gridCountX = DeskConstants.ConstrainCount;
+        gridCountY = DeskConstants.ConstrainCount;
+
+        BuildGrid();
+    }
 
     private class Node
     {
@@ -52,24 +66,59 @@ public class AStarAlgorithm : MonoBehaviour
 
     public void BuildGrid()
     {
-        if (BoardCollider == null) return;
+        if (BoardCollider == null)
+        {
+            Debug.LogError("[A*] BoardCollider not assigned!");
+            return;
+        }
 
-        Bounds b = BoardCollider.bounds;
-        Vector3 firstCellPos = DeskControl.Instance.GetGridCell(0, 0).transform.position;
-        origin = new Vector3(firstCellPos.x, b.min.y, firstCellPos.z);
-        cellSize = Mathf.Min(b.size.x / gridCountX, b.size.z / gridCountY);
+        if (DeskControl.Instance == null)
+        {
+            Debug.LogError("[A*] DeskControl.Instance is null!");
+            return;
+        }
 
         grid = new Node[gridCountX, gridCountY];
+
+        Vector3 firstCellPos = DeskControl.Instance.GetGridCell(0, 0).transform.position;
+        float boardY = firstCellPos.y;
+
+        // Compute cell size (distance between first two cells)
+        float computedCellSize = 0.0f;
+        var cell01 = DeskControl.Instance.GetGridCell(1, 0);
+        if (cell01 != null)
+        {
+            computedCellSize = Vector3.Distance(firstCellPos, cell01.transform.position);
+        }
+        else
+        {
+            Bounds b = BoardCollider.bounds;
+            computedCellSize = Mathf.Min(b.size.x / gridCountX, b.size.z / gridCountY);
+        }
+
+        cellSize = computedCellSize;
+        origin = new Vector3(firstCellPos.x, boardY, firstCellPos.z);
 
         for (int x = 0; x < gridCountX; x++)
         {
             for (int y = 0; y < gridCountY; y++)
             {
-                Vector3 worldPos = origin + new Vector3(x * cellSize, 0, y * cellSize);
+                GameObject cellObj = DeskControl.Instance.GetGridCell(x, y);
+
+                Vector3 worldPos;
+                if (cellObj != null)
+                    worldPos = cellObj.transform.position;
+                else
+                    worldPos = origin + new Vector3(x * cellSize, 0f, y * cellSize);
+
+                worldPos.y = boardY;
+
                 bool walkable = !Physics.CheckBox(worldPos, Vector3.one * (cellSize * 0.4f), Quaternion.identity, obstacleMask);
                 grid[x, y] = new Node(worldPos, walkable, x, y);
             }
         }
+
+        Debug.Log($"[A*] Grid built successfully: {gridCountX}x{gridCountY}, cellSize={cellSize:F3}");
     }
 
     public MultiAStarPaths GetPathsToTarget((int, int) targetPoint, int surroundCount = 4)
@@ -80,7 +129,8 @@ public class AStarAlgorithm : MonoBehaviour
             SurroundPaths = new List<List<Vector3>>()
         };
 
-        if (grid == null) BuildGrid();
+        if (grid == null)
+            BuildGrid();
 
         Vector3 targetWorldPos = DeskControl.Instance.GetGridCell(targetPoint.Item1, targetPoint.Item2).transform.position;
         Node targetNode = GetNearestNode(targetWorldPos);
@@ -91,6 +141,7 @@ public class AStarAlgorithm : MonoBehaviour
 
         Node bestStart = null;
         float bestDist = float.MaxValue;
+
         foreach (var start in outerNodes)
         {
             var path = FindPath(start, targetNode);
@@ -104,6 +155,9 @@ public class AStarAlgorithm : MonoBehaviour
             }
         }
 
+        // Save path for visualization
+        lastPath = result.MainPath;
+
         var randomOuter = outerNodes.OrderBy(x => Random.value).Where(n => n != bestStart).Take(surroundCount);
         foreach (var s in randomOuter)
         {
@@ -112,6 +166,7 @@ public class AStarAlgorithm : MonoBehaviour
                 result.SurroundPaths.Add(path);
         }
 
+        Debug.Log($"[A*] Target {targetPoint} -> MainPath {result.MainPath?.Count} nodes, SurroundPaths: {result.SurroundPaths.Count}");
         return result;
     }
 
@@ -133,7 +188,11 @@ public class AStarAlgorithm : MonoBehaviour
 
     private List<Vector3> FindPath(Node start, Node end)
     {
-        foreach (var n in grid) { n.gCost = float.MaxValue; n.parent = null; }
+        foreach (var n in grid)
+        {
+            n.gCost = float.MaxValue;
+            n.parent = null;
+        }
 
         start.gCost = 0;
         start.hCost = Vector3.Distance(start.worldPos, end.worldPos);
@@ -163,6 +222,7 @@ public class AStarAlgorithm : MonoBehaviour
                 }
             }
         }
+
         return new List<Vector3>();
     }
 
@@ -176,7 +236,8 @@ public class AStarAlgorithm : MonoBehaviour
             if (current == start) break;
             current = current.parent;
         }
-        path.Reverse();
+        Debug.Log($"[A*] Retracing path with {path.Count} nodes. Start={start.worldPos}, End={end.worldPos}");
+        //path.Reverse();
         return path;
     }
 
@@ -210,10 +271,60 @@ public class AStarAlgorithm : MonoBehaviour
 
     private Node GetNearestNode(Vector3 pos)
     {
-        pos = BoardCollider.bounds.ClosestPoint(pos);
-        Vector3 offset = pos - origin;
-        int x = Mathf.Clamp(Mathf.FloorToInt(offset.x / cellSize), 0, gridCountX - 1);
-        int y = Mathf.Clamp(Mathf.FloorToInt(offset.z / cellSize), 0, gridCountY - 1);
-        return grid[x, y];
+        if (grid == null)
+        {
+            BuildGrid();
+            if (grid == null) return null;
+        }
+
+        Node best = null;
+        float bestDist = float.MaxValue;
+
+        for (int x = 0; x < gridCountX; x++)
+        {
+            for (int y = 0; y < gridCountY; y++)
+            {
+                Node n = grid[x, y];
+                if (n == null) continue;
+
+                float d = Vector3.SqrMagnitude(n.worldPos - pos);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    best = n;
+                }
+            }
+        }
+
+        if (best == null)
+            Debug.LogError("[A*] GetNearestNode: no nodes found!");
+
+        return best;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (grid != null)
+        {
+            Gizmos.color = Color.gray;
+            foreach (var n in grid)
+            {
+                if (n == null) continue;
+                Gizmos.DrawWireCube(n.worldPos, Vector3.one * (cellSize * 0.4f));
+                if (!n.walkable)
+                {
+                    Gizmos.color = Color.red;
+                    Gizmos.DrawCube(n.worldPos, Vector3.one * (cellSize * 0.25f));
+                    Gizmos.color = Color.gray;
+                }
+            }
+        }
+
+        if (lastPath != null)
+        {
+            Gizmos.color = Color.green;
+            for (int i = 0; i < lastPath.Count; i++)
+                Gizmos.DrawSphere(lastPath[i], cellSize * 0.15f);
+        }
     }
 }
