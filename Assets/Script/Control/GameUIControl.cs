@@ -9,10 +9,12 @@ public class GameUIControl : MonoBehaviour
     [SerializeField] TextMeshProUGUI TurnText;
     [SerializeField] Button ShowNumberButton;
     [SerializeField] Button ResignButton;
+    [SerializeField] Button ResetButton;
+
 
     [SerializeField] TextMeshProUGUI MoveSpeedText;
     [SerializeField] Slider MoveSpeedSlider;
-    private readonly float[] speedLevels = { 0.001f, 0.01f, 0.05f, 0.1f, 0.15f }; 
+    private readonly float[] speedLevels = { 0.05f, 0.1f, 0.25f, 0.5f, 1f }; 
 
     private float moveSpeed = 1f;
 
@@ -59,6 +61,7 @@ public class GameUIControl : MonoBehaviour
     {
         ShowNumberButton.onClick.AddListener(OnShowNumberClick);
         ResignButton.onClick.AddListener(OnResignButtonClick);
+        ResetButton.onClick.AddListener(OnRestButtonClick);
     }
 
     void OnShowNumberClick()
@@ -74,6 +77,11 @@ public class GameUIControl : MonoBehaviour
         GameManager.Instance.EndGame(winner);
     }
 
+    void OnRestButtonClick()
+    {
+        CameraControl.Instance.ResetCamera();
+    }
+    
     #endregion
 
     private void Start()

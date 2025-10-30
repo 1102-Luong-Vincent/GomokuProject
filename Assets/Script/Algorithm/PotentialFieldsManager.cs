@@ -17,10 +17,11 @@ public class PotentialFieldsManager : MonoBehaviour
     [Header("Potential Field Settings")]
     public float attractionStrength = 10f;
     public float repulsionStrength = 9f;
-    private float stopDistance = 0.01f;//0.0001f;
-
+    private float stopDistance = 0.025f;
+    [Range(1f, 10f)] private float repulsionRangeMultiplier = 10f;
     [Header("Timeout Settings")]
-    public float waypointTimeout = 5f; 
+    public float waypointTimeout = 5f;
+
 
     private void Awake()
     {
@@ -80,23 +81,49 @@ public class PotentialFieldsManager : MonoBehaviour
 
         isMovementTimedOut = false;
 
-        Vector3[] finalDestinations = new Vector3[moveObjects.Count];
-        for (int i = 0; i < moveObjects.Count; i++)
+        int n = moveObjects.Count;
+        float[] pathLengths = new float[n];
+        float maxLength = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float len = 0f;
+            var w = waypointsList[i];
+            if (w != null && w.Count > 0)
+            {
+                Vector3 prev = moveObjects[i] != null ? moveObjects[i].transform.position : w[0];
+                for (int j = 0; j < w.Count; j++)
+                {
+                    len += Vector3.Distance(prev, w[j]);
+                    prev = w[j];
+                }
+            }
+            pathLengths[i] = len;
+            if (len > maxLength) maxLength = len;
+        }
+
+        if (maxLength <= 0f)
+            yield break;
+
+        float baseSpeed = Mathf.Max(0.0001f, GameUIControl.Instance.GetMoveSpeed());
+        float syncDuration = Mathf.Max(0.01f, maxLength / baseSpeed);
+
+        Vector3[] finalDestinations = new Vector3[n];
+        for (int i = 0; i < n; i++)
         {
             if (waypointsList[i] != null && waypointsList[i].Count > 0)
-            {
                 finalDestinations[i] = waypointsList[i][waypointsList[i].Count - 1];
-            }
+            else
+                finalDestinations[i] = moveObjects[i] != null ? moveObjects[i].transform.position : Vector3.zero;
         }
 
         List<Coroutine> movementCoroutines = new List<Coroutine>();
-
-        for (int i = 0; i < moveObjects.Count; i++)
+        for (int i = 0; i < n; i++)
         {
             if (moveObjects[i] != null && waypointsList[i] != null && waypointsList[i].Count > 0)
             {
+                float pathLen = pathLengths[i];
                 Coroutine moveCoroutine = StartCoroutine(
-                    IndependentPFMovement(moveObjects[i], waypointsList[i])
+                    IndependentPFMovement(moveObjects[i], waypointsList[i], pathLen, syncDuration, finalDestinations[i])
                 );
                 movementCoroutines.Add(moveCoroutine);
             }
@@ -109,33 +136,29 @@ public class PotentialFieldsManager : MonoBehaviour
 
         if (isMovementTimedOut)
         {
-
             for (int i = 0; i < moveObjects.Count; i++)
             {
-                if (moveObjects[i] != null && waypointsList[i] != null && waypointsList[i].Count > 0)
-                {
+                if (moveObjects[i] != null)
                     moveObjects[i].transform.position = finalDestinations[i];
-                }
             }
         }
     }
 
-    private IEnumerator IndependentPFMovement(GameObject moveObject, List<Vector3> waypoints)
+    private IEnumerator IndependentPFMovement(GameObject moveObject, List<Vector3> waypoints, float pathLength, float syncDuration, Vector3 finalDestination)
     {
         if (moveObject == null || waypoints == null || waypoints.Count == 0)
             yield break;
 
         float moveRadius = GetObjectRadius(moveObject);
-        Vector3 finalDestination = waypoints[waypoints.Count - 1];
-
         float totalElapsedTime = 0f;
+
+        float baseSpeedRatio = pathLength / Mathf.Max(0.0001f, syncDuration);
 
         foreach (Vector3 targetPoint in waypoints)
         {
             if (moveObject == null)
                 yield break;
 
-            float waypointElapsedTime = 0f;
             bool reached = false;
 
             while (!reached && totalElapsedTime < waypointTimeout)
@@ -148,12 +171,15 @@ public class PotentialFieldsManager : MonoBehaviour
 
                 if (distToTarget > stopDistance)
                 {
-                    Vector3 velocity = CalculatePotentialFieldVelocity(
-                        moveObject, pos, targetPoint, moveRadius
-                    );
-                    moveObject.transform.position += velocity;
+                    float currentGlobalSpeed = Mathf.Max(0.0001f, GameUIControl.Instance.GetMoveSpeed());
 
-                    waypointElapsedTime += Time.deltaTime;
+                    float dynamicSpeed = baseSpeedRatio * currentGlobalSpeed;
+
+                    Vector3 dir = (targetPoint - pos).normalized;
+                    Vector3 velocity = CalculatePotentialFieldVelocity(moveObject, pos, targetPoint, moveRadius);
+                    Vector3 moveDir = velocity.sqrMagnitude > 0f ? velocity.normalized : dir;
+
+                    moveObject.transform.position += moveDir * dynamicSpeed * Time.deltaTime;
                     totalElapsedTime += Time.deltaTime;
                 }
                 else
@@ -167,73 +193,15 @@ public class PotentialFieldsManager : MonoBehaviour
             if (totalElapsedTime >= waypointTimeout)
             {
                 isMovementTimedOut = true;
-
                 if (moveObject != null)
-                {
                     moveObject.transform.position = finalDestination;
-                }
-
                 yield break;
             }
 
             if (moveObject != null)
-            {
                 moveObject.transform.position = targetPoint;
-            }
         }
     }
-    public IEnumerator StartPFMovement(List<Vector3> waypoints, GameObject moveObject)
-    {
-        if (waypoints == null || waypoints.Count == 0 || moveObject == null)
-            yield break;
-
-        foreach (Vector3 targetPoint in waypoints)
-        {
-            yield return MoveToWaypoint(moveObject, targetPoint);
-        }
-    }
-
-    private IEnumerator MoveToWaypoint(GameObject moveObject, Vector3 targetPoint)
-    {
-        if (moveObject == null)
-            yield break;
-
-        float elapsedTime = 0f;
-        bool reached = false;
-
-        float moveRadius = GetObjectRadius(moveObject);
-
-        while (!reached && elapsedTime < waypointTimeout)
-        {
-            if (moveObject == null)
-                yield break;
-
-            Vector3 pos = moveObject.transform.position;
-            float distToTarget = Vector3.Distance(pos, targetPoint);
-
-            if (distToTarget > stopDistance)
-            {
-                Vector3 velocity = CalculatePotentialFieldVelocity(moveObject, pos, targetPoint, moveRadius);
-                moveObject.transform.position += velocity;
-                elapsedTime += Time.deltaTime;
-            }
-            else
-            {
-                reached = true;
-            }
-
-            yield return null;
-        }
-
-        if (moveObject != null)
-        {
-            moveObject.transform.position = targetPoint;
-
-        }
-    }
-
-
-
 
 
     private Vector3 CalculatePotentialFieldVelocity(GameObject moveObject, Vector3 currentPos,
@@ -289,7 +257,7 @@ public class PotentialFieldsManager : MonoBehaviour
 
         float safeDistance = moveRadius + obstacleRadius + 0.1f;
 
-        float influenceRadius = safeDistance * 2.5f; 
+        float influenceRadius = safeDistance * repulsionRangeMultiplier; 
         if (distance < influenceRadius && distance > 0.001f)
         {
             float influence = 1f - (distance / influenceRadius);

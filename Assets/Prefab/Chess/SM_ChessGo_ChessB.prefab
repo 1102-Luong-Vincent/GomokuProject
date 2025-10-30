@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7925917384852932694}
   - component: {fileID: 691194628128735528}
   - component: {fileID: 3583765299833940948}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: Text (TMP)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -149,7 +149,7 @@ GameObject:
   - component: {fileID: 3825185954514011124}
   - component: {fileID: 637679465546336143}
   - component: {fileID: 3090754422432867448}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: SM_ChessGo_ChessB
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -273,7 +273,7 @@ GameObject:
   - component: {fileID: 7715729192220071479}
   - component: {fileID: 1316582581485571846}
   - component: {fileID: 3150944549742939697}
-  m_Layer: 5
+  m_Layer: 6
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
