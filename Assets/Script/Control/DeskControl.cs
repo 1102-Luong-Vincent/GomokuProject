@@ -1,5 +1,7 @@
+using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class DeskConstants
 {
@@ -98,7 +100,20 @@ public class DeskControl : MonoBehaviour
         return gridCells[x, y];
     }
 
+    public List<GameObject> GetAllGridCells()
+    {
+        List<GameObject> allCells = new List<GameObject>();
 
+        for(int x = 0; x < gridCells.GetLength(0); x++)
+        {
+            for(int y = 0; y <  gridCells.GetLength(1); y++)
+            {
+                var cell = GetGridCell(x, y);
+                if (cell != null) allCells.Add(cell);
+            }
+        }
+        return allCells;
+    }
     float CalSpacing()
     {
         float totalDistance = endPoint.position.x - startPoint.position.x;

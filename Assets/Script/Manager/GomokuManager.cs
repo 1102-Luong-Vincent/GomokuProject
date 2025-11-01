@@ -84,6 +84,41 @@ public class GomokuManager : MonoBehaviour
 
             TryPlaceChess();
         }
+        // --- New hover logic ---
+        //int layerMask = LayerMask.GetMask("ClickablePoint");
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f))
+        {
+            if(deskControl.IsAtGridCells(hit.collider.gameObject, out int x, out int y))
+            {
+                GameObject hitObj = hit.collider.gameObject;   
+                SpriteRenderer sr = hitObj.GetComponent<SpriteRenderer>();
+            
+                if (sr != null)
+                {
+                    Color c = sr.color;
+                    c.a = 1f; // fully visible
+                    sr.color = c;
+                }
+            }                 
+        }
+
+        //Reset all other checkpoints' alpha to transparent
+        foreach (var cell in deskControl.GetAllGridCells())
+        {
+            GameObject cellObj = cell.gameObject;
+            if (cellObj == null) continue;
+            if (cellObj == hit.collider?.gameObject) continue; // skip hovered cell
+
+            SpriteRenderer sr = cellObj.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                Color c = sr.color;
+                c.a = 0f; // fully transparent
+                sr.color = c;
+            }
+        }
     }
 
     void TryPlaceChess()
