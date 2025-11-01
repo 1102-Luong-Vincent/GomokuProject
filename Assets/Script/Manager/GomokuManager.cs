@@ -97,9 +97,7 @@ public class GomokuManager : MonoBehaviour
             
                 if (sr != null)
                 {
-                    Color c = sr.color;
-                    c.a = 1f; // fully visible
-                    sr.color = c;
+                    sr.color = Color.white;
                 }
             }                 
         }
@@ -114,9 +112,7 @@ public class GomokuManager : MonoBehaviour
             SpriteRenderer sr = cellObj.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
-                Color c = sr.color;
-                c.a = 0f; // fully transparent
-                sr.color = c;
+                sr.color = Color.red;
             }
         }
     }
