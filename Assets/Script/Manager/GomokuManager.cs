@@ -97,7 +97,8 @@ public class GomokuManager : MonoBehaviour
             
                 if (sr != null)
                 {
-                    sr.color = Color.white;
+                    sr.color = new Color32(255, 255, 255, 255);
+
                 }
             }                 
         }
@@ -112,7 +113,7 @@ public class GomokuManager : MonoBehaviour
             SpriteRenderer sr = cellObj.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
-                sr.color = Color.red;
+                sr.color = new Color32(255, 255, 255, 0);
             }
         }
     }
