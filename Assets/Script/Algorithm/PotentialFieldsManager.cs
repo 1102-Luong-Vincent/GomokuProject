@@ -1,8 +1,6 @@
-using UnityEngine;
-using System.Collections.Generic;
-using System.Linq;
 using System.Collections;
-
+using System.Collections.Generic;
+using UnityEngine;
 
 public class PotentialFieldsManager : MonoBehaviour
 {
@@ -15,13 +13,20 @@ public class PotentialFieldsManager : MonoBehaviour
     private List<GameObject> DecorateObjects = new List<GameObject>();
 
     [Header("Potential Field Settings")]
+    [Tooltip("How strongly pieces are attracted to the next waypoint.")]
     public float attractionStrength = 10f;
-    public float repulsionStrength = 9f;
-    private float stopDistance = 0.005f;
-     private float repulsionRangeMultiplier = 50f;
+
+    [Tooltip("How strong the repulsion from obstacles/other objects is.")]
+    public float repulsionStrength = 6f;
+
+    [Tooltip("Multiplier applied to object sizes to compute an influence radius.")]
+    public float repulsionRangeMultiplier = 2.0f;
+
+    [Tooltip("Stop threshold for considering a waypoint reached (meters).")]
+    public float stopDistance = 0.01f;
+
     [Header("Timeout Settings")]
     public float waypointTimeout = 5f;
-
 
     private void Awake()
     {
@@ -36,13 +41,16 @@ public class PotentialFieldsManager : MonoBehaviour
     private void Start()
     {
         DecorateObjects.Clear();
-        for (int i = 0; i < Decorate.childCount; i++)
+        if (Decorate != null)
         {
-            GameObject childObj = Decorate.GetChild(i).gameObject;
-            DecorateObjects.Add(childObj);
+            for (int i = 0; i < Decorate.childCount; i++)
+            {
+                GameObject childObj = Decorate.GetChild(i).gameObject;
+                if (childObj != null)
+                    DecorateObjects.Add(childObj);
+            }
         }
     }
-
 
     public void Init()
     {
@@ -51,11 +59,7 @@ public class PotentialFieldsManager : MonoBehaviour
 
     public void ClearCurrentItems()
     {
-        foreach (GameObject item in currentItems)
-        {
-            if (item != null)
-                Destroy(item);
-        }
+        // don't destroy passed-in prefabs from DeskControl; this is only for runtime temp items
         currentItems.Clear();
     }
 
@@ -70,7 +74,6 @@ public class PotentialFieldsManager : MonoBehaviour
         if (item != null && currentItems.Contains(item))
             currentItems.Remove(item);
     }
-
 
     public IEnumerator StartIndependentPFMovement(List<GameObject> moveObjects, List<List<Vector3>> waypointsList)
     {
@@ -105,7 +108,7 @@ public class PotentialFieldsManager : MonoBehaviour
             yield break;
 
         float baseSpeed = Mathf.Max(0.0001f, GameUIControl.Instance.GetMoveSpeed());
-        float syncDuration = Mathf.Max(0.01f, maxLength / baseSpeed);
+        float syncDuration = Mathf.Max(0.01f, maxLength / baseSpeed); // seconds to synchronize
 
         Vector3[] finalDestinations = new Vector3[n];
         for (int i = 0; i < n; i++)
@@ -142,6 +145,8 @@ public class PotentialFieldsManager : MonoBehaviour
                     moveObjects[i].transform.position = finalDestinations[i];
             }
         }
+
+        yield break;
     }
 
     private IEnumerator IndependentPFMovement(GameObject moveObject, List<Vector3> waypoints, float pathLength, float syncDuration, Vector3 finalDestination)
@@ -150,7 +155,7 @@ public class PotentialFieldsManager : MonoBehaviour
             yield break;
 
         float totalElapsedTime = 0f;
-        float baseSpeedRatio = pathLength / Mathf.Max(0.0001f, syncDuration);
+        float baseSpeedRatio = Mathf.Max(0.0001f, pathLength / Mathf.Max(0.0001f, syncDuration));
 
         foreach (Vector3 targetPoint in waypoints)
         {
@@ -172,11 +177,20 @@ public class PotentialFieldsManager : MonoBehaviour
                     float currentGlobalSpeed = Mathf.Max(0.0001f, GameUIControl.Instance.GetMoveSpeed());
                     float dynamicSpeed = baseSpeedRatio * currentGlobalSpeed;
 
-                    Vector3 dir = (targetPoint - pos).normalized;
-                    Vector3 velocity = CalculatePotentialFieldVelocity(moveObject, pos, targetPoint);
-                    Vector3 moveDir = velocity.sqrMagnitude > 0f ? velocity.normalized : dir;
+                    // compute combined force direction (no delta-time applied here)
+                    Vector3 totalForce = CalculatePotentialFieldForce(moveObject, pos, targetPoint);
 
-                    moveObject.transform.position += moveDir * dynamicSpeed * Time.deltaTime;
+                    // if total force is near zero, fallback to direct direction
+                    Vector3 moveDir = (totalForce.sqrMagnitude > 0.00001f) ? totalForce.normalized : (targetPoint - pos).normalized;
+
+                    // move with dynamic speed (units/sec) * deltaTime
+                    Vector3 delta = moveDir * dynamicSpeed * Time.deltaTime;
+
+                    // clamp overshoot
+                    if (delta.magnitude > distToTarget)
+                        delta = (targetPoint - pos);
+
+                    moveObject.transform.position += delta;
                     totalElapsedTime += Time.deltaTime;
                 }
                 else
@@ -200,40 +214,52 @@ public class PotentialFieldsManager : MonoBehaviour
         }
     }
 
-
-    private Vector3 CalculatePotentialFieldVelocity(GameObject moveObject, Vector3 currentPos, Vector3 targetPos)
+    /// <summary>
+    /// Computes the vector force (not time-scaled) from attraction + repulsion.
+    /// </summary>
+    private Vector3 CalculatePotentialFieldForce(GameObject moveObject, Vector3 currentPos, Vector3 targetPos)
     {
         Vector3 attractionForce = CalculateAttractionForce(currentPos, targetPos);
         Vector3 totalRepulsion = CalculateTotalRepulsionForce(moveObject, currentPos);
 
-        float maxRepulsionMagnitude = attractionForce.magnitude * 0.8f;
-
+        // Cap repulsion so it doesn't completely overpower attraction in direction calculation
+        float maxRepulsionMagnitude = attractionForce.magnitude * 1.5f;
         if (totalRepulsion.magnitude > maxRepulsionMagnitude)
             totalRepulsion = totalRepulsion.normalized * maxRepulsionMagnitude;
 
         Vector3 totalForce = attractionForce + totalRepulsion;
-        float speed = GameUIControl.Instance.GetMoveSpeed();
-        Vector3 velocity = totalForce.normalized * speed * Time.deltaTime;
+        if (totalForce.sqrMagnitude <= 0.00001f)
+            return Vector3.zero;
 
-        return velocity;
+        return totalForce;
     }
 
     private Vector3 CalculateAttractionForce(Vector3 currentPos, Vector3 targetPos)
     {
-        Vector3 direction = targetPos - currentPos;
-        return direction.normalized * attractionStrength;
+        Vector3 dir = (targetPos - currentPos);
+        if (dir.sqrMagnitude <= 0.0000001f) return Vector3.zero;
+        return dir.normalized * attractionStrength;
     }
 
     private Vector3 CalculateTotalRepulsionForce(GameObject moveObject, Vector3 currentPos)
     {
         Vector3 totalRepulsion = Vector3.zero;
 
+        // combine repulsion from DecorateObjects and other currentItems
         foreach (GameObject obstacle in DecorateObjects)
         {
             if (obstacle == null || obstacle == moveObject)
                 continue;
 
             Vector3 repulsionForce = CalculateBoundsBasedRepulsion(moveObject, currentPos, obstacle);
+            totalRepulsion += repulsionForce;
+        }
+
+        // also repulse other moving items to prevent stacking
+        foreach (GameObject other in currentItems)
+        {
+            if (other == null || other == moveObject) continue;
+            Vector3 repulsionForce = CalculateBoundsBasedRepulsion(moveObject, currentPos, other);
             totalRepulsion += repulsionForce;
         }
 
@@ -252,37 +278,39 @@ public class PotentialFieldsManager : MonoBehaviour
         Bounds obstacleBounds = obstacleCollider.bounds;
 
         Vector3 closestPointOnObstacle = obstacleBounds.ClosestPoint(currentPos);
-        Vector3 repulsionDir = currentPos - closestPointOnObstacle;
+        Vector3 repulsionDir = (currentPos - closestPointOnObstacle);
         float distance = repulsionDir.magnitude;
 
-        if (distance < 0.001f)
+        if (distance < 0.0001f)
         {
-            repulsionDir = currentPos - obstacleBounds.center;
+            // fallback direction away from obstacle center
+            repulsionDir = (currentPos - obstacleBounds.center);
             distance = repulsionDir.magnitude;
-            if (distance < 0.001f)
+            if (distance < 0.0001f)
                 return Vector3.up * repulsionStrength;
         }
 
         float moveHalfExtent = moveBounds.extents.magnitude;
         float obstacleHalfExtent = obstacleBounds.extents.magnitude;
-        float safeDistance = moveHalfExtent + obstacleHalfExtent ;
+        float safeDistance = moveHalfExtent + obstacleHalfExtent;
 
-        float influenceRadius = safeDistance * repulsionRangeMultiplier;
+        float influenceRadius = safeDistance * Mathf.Max(1f, repulsionRangeMultiplier);
 
         if (distance < influenceRadius)
         {
-            float influence = 1f - (distance / influenceRadius);
-            influence = Mathf.Pow(influence, 2);
+            float influence = 1f - (distance / influenceRadius); // 1 close, 0 far
+            influence = Mathf.Pow(influence, 2f); // smooth falloff
 
             if (distance < safeDistance)
             {
-                influence = Mathf.Lerp(influence, 1f, (safeDistance - distance) / safeDistance);
+                // inside collision area -> strong repulsion
+                influence = Mathf.Lerp(influence, 1f, (safeDistance - distance) / Mathf.Max(0.0001f, safeDistance));
                 influence = Mathf.Pow(influence, 1.5f);
             }
 
             Vector3 repulsionForce = repulsionDir.normalized * (repulsionStrength * influence);
-            Debug.DrawRay(currentPos, repulsionForce, Color.red);
-
+            // optional debug draw:
+            Debug.DrawRay(currentPos, repulsionForce * 0.01f, Color.red, 0.02f);
             return repulsionForce;
         }
 
@@ -291,25 +319,27 @@ public class PotentialFieldsManager : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        if (!Application.isPlaying || DecorateObjects == null)
-            return;
+        if (!Application.isPlaying) return;
 
-        Gizmos.color = Color.yellow;
-        foreach (GameObject obstacle in DecorateObjects)
+        if (DecorateObjects != null)
         {
-            if (obstacle == null) continue;
-
-            Collider collider = obstacle.GetComponent<Collider>();
-            if (collider != null)
+            Gizmos.color = Color.yellow;
+            foreach (GameObject obstacle in DecorateObjects)
             {
-                Bounds bounds = collider.bounds;
-                Gizmos.DrawWireCube(bounds.center, bounds.size);
+                if (obstacle == null) continue;
 
-                float halfExtent = bounds.extents.magnitude;
-                float influenceRadius = halfExtent * repulsionRangeMultiplier;
-                Gizmos.color = Color.cyan;
-                Gizmos.DrawWireSphere(bounds.center, influenceRadius);
-                Gizmos.color = Color.yellow;
+                Collider collider = obstacle.GetComponent<Collider>();
+                if (collider != null)
+                {
+                    Bounds bounds = collider.bounds;
+                    Gizmos.DrawWireCube(bounds.center, bounds.size);
+
+                    float halfExtent = bounds.extents.magnitude;
+                    float influenceRadius = halfExtent * repulsionRangeMultiplier;
+                    Gizmos.color = Color.cyan;
+                    Gizmos.DrawWireSphere(bounds.center, influenceRadius);
+                    Gizmos.color = Color.yellow;
+                }
             }
         }
     }
