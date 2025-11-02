@@ -97,7 +97,7 @@ public class GomokuManager : MonoBehaviour
             
                 if (sr != null)
                 {
-                    sr.color = new Color32(255, 255, 255, 255);
+                   if (gomokuData.GetBoard()[x, y] == GomoKuType.None )  sr.color = new Color32(255, 255, 255, 255);
 
                 }
             }                 
