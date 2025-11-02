@@ -16,8 +16,8 @@ public class AStarAlgorithm : MonoBehaviour
 
     [SerializeField] private Collider BoardCollider;
     [SerializeField] private LayerMask obstacleMask;
-    [SerializeField] private int gridCountX = 15;
-    [SerializeField] private int gridCountY = 15;
+    [SerializeField] private int gridCountX = 50;
+    [SerializeField] private int gridCountY = 50;
 
     private Node[,] grid;
     private float cellSize;
@@ -36,9 +36,6 @@ public class AStarAlgorithm : MonoBehaviour
     private IEnumerator Start()
     {
         yield return new WaitUntil(() => DeskControl.Instance != null && DeskControl.Instance.GetGridCell(0, 0) != null);
-
-        gridCountX = DeskConstants.ConstrainCount;
-        gridCountY = DeskConstants.ConstrainCount;
 
         BuildGrid(); //build the grid on the board
     }
@@ -68,9 +65,7 @@ public class AStarAlgorithm : MonoBehaviour
         if (BoardCollider == null) return;
 
         origin = DeskControl.Instance.GetGridCell(0, 0).transform.position;
-        Vector3 cell00 = DeskControl.Instance.GetGridCell(0, 0).transform.position;
-        Vector3 cell10 = DeskControl.Instance.GetGridCell(1, 0).transform.position;
-        cellSize = Vector3.Distance(cell00, cell10);
+        cellSize = BoardCollider.bounds.size.x / gridCountX;
 
         grid = new Node[gridCountX, gridCountY];
 

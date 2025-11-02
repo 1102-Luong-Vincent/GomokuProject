@@ -67,7 +67,7 @@ public class PotentialFieldsManager : MonoBehaviour
 
     public void RemoveCurrentItem(GameObject item)
     {
-        if (item != null && !currentItems.Contains(item))
+        if (item != null && currentItems.Contains(item))
             currentItems.Remove(item);
     }
 
@@ -149,9 +149,7 @@ public class PotentialFieldsManager : MonoBehaviour
         if (moveObject == null || waypoints == null || waypoints.Count == 0)
             yield break;
 
-        float moveRadius = GetObjectRadius(moveObject);
         float totalElapsedTime = 0f;
-
         float baseSpeedRatio = pathLength / Mathf.Max(0.0001f, syncDuration);
 
         foreach (Vector3 targetPoint in waypoints)
@@ -172,11 +170,10 @@ public class PotentialFieldsManager : MonoBehaviour
                 if (distToTarget > stopDistance)
                 {
                     float currentGlobalSpeed = Mathf.Max(0.0001f, GameUIControl.Instance.GetMoveSpeed());
-
                     float dynamicSpeed = baseSpeedRatio * currentGlobalSpeed;
 
                     Vector3 dir = (targetPoint - pos).normalized;
-                    Vector3 velocity = CalculatePotentialFieldVelocity(moveObject, pos, targetPoint, moveRadius);
+                    Vector3 velocity = CalculatePotentialFieldVelocity(moveObject, pos, targetPoint);
                     Vector3 moveDir = velocity.sqrMagnitude > 0f ? velocity.normalized : dir;
 
                     moveObject.transform.position += moveDir * dynamicSpeed * Time.deltaTime;
@@ -204,11 +201,10 @@ public class PotentialFieldsManager : MonoBehaviour
     }
 
 
-    private Vector3 CalculatePotentialFieldVelocity(GameObject moveObject, Vector3 currentPos,
-                                                     Vector3 targetPos, float moveRadius)
+    private Vector3 CalculatePotentialFieldVelocity(GameObject moveObject, Vector3 currentPos, Vector3 targetPos)
     {
         Vector3 attractionForce = CalculateAttractionForce(currentPos, targetPos);
-        Vector3 totalRepulsion = CalculateTotalRepulsionForce(moveObject, currentPos, moveRadius);
+        Vector3 totalRepulsion = CalculateTotalRepulsionForce(moveObject, currentPos);
 
         float maxRepulsionMagnitude = attractionForce.magnitude * 0.8f;
 
@@ -228,7 +224,7 @@ public class PotentialFieldsManager : MonoBehaviour
         return direction.normalized * attractionStrength;
     }
 
-    private Vector3 CalculateTotalRepulsionForce(GameObject moveObject, Vector3 currentPos, float moveRadius)
+    private Vector3 CalculateTotalRepulsionForce(GameObject moveObject, Vector3 currentPos)
     {
         Vector3 totalRepulsion = Vector3.zero;
 
@@ -237,36 +233,51 @@ public class PotentialFieldsManager : MonoBehaviour
             if (obstacle == null || obstacle == moveObject)
                 continue;
 
-            Vector3 repulsionForce = CalculateSingleObstacleRepulsion(
-                currentPos,
-                obstacle,
-                moveRadius
-            );
-
+            Vector3 repulsionForce = CalculateBoundsBasedRepulsion(moveObject, currentPos, obstacle);
             totalRepulsion += repulsionForce;
         }
 
         return totalRepulsion;
     }
-    private Vector3 CalculateSingleObstacleRepulsion(Vector3 currentPos, GameObject obstacle, float moveRadius)
-    {
-        float obstacleRadius = GetObjectRadius(obstacle);
 
-        Vector3 repulsionDir = currentPos - obstacle.transform.position;
+    private Vector3 CalculateBoundsBasedRepulsion(GameObject moveObject, Vector3 currentPos, GameObject obstacle)
+    {
+        Collider moveCollider = moveObject.GetComponent<Collider>();
+        Collider obstacleCollider = obstacle.GetComponent<Collider>();
+
+        if (moveCollider == null || obstacleCollider == null)
+            return Vector3.zero;
+
+        Bounds moveBounds = moveCollider.bounds;
+        Bounds obstacleBounds = obstacleCollider.bounds;
+
+        Vector3 closestPointOnObstacle = obstacleBounds.ClosestPoint(currentPos);
+        Vector3 repulsionDir = currentPos - closestPointOnObstacle;
         float distance = repulsionDir.magnitude;
 
-        float safeDistance = moveRadius + obstacleRadius + 0.1f;
+        if (distance < 0.001f)
+        {
+            repulsionDir = currentPos - obstacleBounds.center;
+            distance = repulsionDir.magnitude;
+            if (distance < 0.001f)
+                return Vector3.up * repulsionStrength;
+        }
 
-        float influenceRadius = safeDistance * repulsionRangeMultiplier; 
-        if (distance < influenceRadius && distance > 0.001f)
+        float moveHalfExtent = moveBounds.extents.magnitude;
+        float obstacleHalfExtent = obstacleBounds.extents.magnitude;
+        float safeDistance = moveHalfExtent + obstacleHalfExtent + 0.1f;
+
+        float influenceRadius = safeDistance * repulsionRangeMultiplier;
+
+        if (distance < influenceRadius)
         {
             float influence = 1f - (distance / influenceRadius);
-            influence = Mathf.Pow(influence, 2); 
+            influence = Mathf.Pow(influence, 2);
 
             if (distance < safeDistance)
             {
                 influence = Mathf.Lerp(influence, 1f, (safeDistance - distance) / safeDistance);
-                influence = Mathf.Pow(influence, 1.5f); 
+                influence = Mathf.Pow(influence, 1.5f);
             }
 
             Vector3 repulsionForce = repulsionDir.normalized * (repulsionStrength * influence);
@@ -278,17 +289,6 @@ public class PotentialFieldsManager : MonoBehaviour
         return Vector3.zero;
     }
 
-    private float GetObjectRadius(GameObject obj)
-    {
-        Collider collider = obj.GetComponent<Collider>();
-
-        if (collider != null)
-        {
-            return collider.bounds.extents.magnitude;
-        }
-
-        return 0.5f; 
-    }
     private void OnDrawGizmos()
     {
         if (!Application.isPlaying || DecorateObjects == null)
@@ -299,10 +299,18 @@ public class PotentialFieldsManager : MonoBehaviour
         {
             if (obstacle == null) continue;
 
-            float radius = GetObjectRadius(obstacle);
-            float influenceRadius = radius * 2f;
+            Collider collider = obstacle.GetComponent<Collider>();
+            if (collider != null)
+            {
+                Bounds bounds = collider.bounds;
+                Gizmos.DrawWireCube(bounds.center, bounds.size);
 
-            Gizmos.DrawWireSphere(obstacle.transform.position, influenceRadius);
+                float halfExtent = bounds.extents.magnitude;
+                float influenceRadius = halfExtent * repulsionRangeMultiplier;
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawWireSphere(bounds.center, influenceRadius);
+                Gizmos.color = Color.yellow;
+            }
         }
     }
 }
