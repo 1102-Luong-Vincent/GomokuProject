@@ -377,7 +377,6 @@ public class GomokuManager : MonoBehaviour
             if (piece != null) piece.transform.position = finalPos;
         }
 
-        // Check game state (target cell)
         GomoKuType result = gomokuData.CheckGameState(Paths.TargetPoint.Item1, Paths.TargetPoint.Item2);
         if (result != GomoKuType.None)
         {
