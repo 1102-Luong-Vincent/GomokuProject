@@ -17,8 +17,8 @@ public class PotentialFieldsManager : MonoBehaviour
     [Header("Potential Field Settings")]
     public float attractionStrength = 10f;
     public float repulsionStrength = 9f;
-    private float stopDistance = 0.025f;
-    [Range(1f, 10f)] private float repulsionRangeMultiplier = 10f;
+    private float stopDistance = 0.0025f;
+     private float repulsionRangeMultiplier = 50f;
     [Header("Timeout Settings")]
     public float waypointTimeout = 5f;
 
@@ -265,7 +265,7 @@ public class PotentialFieldsManager : MonoBehaviour
 
         float moveHalfExtent = moveBounds.extents.magnitude;
         float obstacleHalfExtent = obstacleBounds.extents.magnitude;
-        float safeDistance = moveHalfExtent + obstacleHalfExtent + 0.1f;
+        float safeDistance = moveHalfExtent + obstacleHalfExtent ;
 
         float influenceRadius = safeDistance * repulsionRangeMultiplier;
 
