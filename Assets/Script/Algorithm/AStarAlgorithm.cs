@@ -40,7 +40,7 @@ public class AStarAlgorithm : MonoBehaviour
         gridCountX = DeskConstants.ConstrainCount;
         gridCountY = DeskConstants.ConstrainCount;
 
-        BuildGrid();
+        BuildGrid(); //build the grid on the board
     }
 
     private class Node
