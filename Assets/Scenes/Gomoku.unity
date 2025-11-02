@@ -396,9 +396,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Decorate: {fileID: 1268045668}
   attractionStrength: 20
-  repulsionStrength: 4
-  repulsionRangeMultiplier: 1.25
-  stopDistance: 0.005
+  repulsionStrength: 25
   waypointTimeout: 60
 --- !u!4 &79525026
 Transform:
