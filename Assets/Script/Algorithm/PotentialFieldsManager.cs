@@ -17,7 +17,7 @@ public class PotentialFieldsManager : MonoBehaviour
     [Header("Potential Field Settings")]
     public float attractionStrength = 10f;
     public float repulsionStrength = 9f;
-    private float stopDistance = 0.0025f;
+    private float stopDistance = 0.005f;
      private float repulsionRangeMultiplier = 50f;
     [Header("Timeout Settings")]
     public float waypointTimeout = 5f;
