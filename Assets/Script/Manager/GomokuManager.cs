@@ -146,7 +146,7 @@ public class GomokuManager : MonoBehaviour
     {
         (int, int) endPoint = (x, y);
         MultiAStarPaths Path = AStarAlgorithm.Instance.GetPathsToTarget(endPoint);
-        Debug.Log($"Path :{Path.TargetPoint} {Path.MainPath.Count} AND  {Path.SurroundPaths.Count} ");
+      //  Debug.Log($"Path :{Path.TargetPoint} {Path.MainPath.Count} AND  {Path.SurroundPaths.Count} ");
         currentMoveCoroutine = StartCoroutine(MovePiecePaths(Path));
     }
 
