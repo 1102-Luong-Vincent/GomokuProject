@@ -1,54 +1,85 @@
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class GameUIControl : MonoBehaviour
 {
-
     public static GameUIControl Instance;
-    [SerializeField] TextMeshProUGUI TurnText;
+    [SerializeField] GameObject AITurnGameObject;
+    [SerializeField] Image AIurnTens;
+    [SerializeField] Image AIurnDigits;
+    [SerializeField] GameObject PlayerTurnGameObject;
+    [SerializeField] Image PlayerTurnTens;
+    [SerializeField] Image PlayerTurnDigits;
+
+
+    [SerializeField] Button LevelButton;
+
+
+    [SerializeField] Button ShowGirdButton;
     [SerializeField] Button ShowNumberButton;
     [SerializeField] Button ResignButton;
     [SerializeField] Button ResetButton;
 
-
-    [SerializeField] TextMeshProUGUI MoveSpeedText;
+    [SerializeField] Image MoveSpeedImage;
     [SerializeField] Slider MoveSpeedSlider;
+    [SerializeField] Button PlusButton;
+    [SerializeField] Button MinusButton;
+    private int currentSpeedLevel = 0;
+    private readonly float[] sliderValues = { 0f, 0.25f, 0.5f, 0.75f, 1.1f };
     private readonly float[] speedLevels = { 0.05f, 0.1f, 0.25f, 0.5f, 1f }; 
 
     private float moveSpeed = 1f;
+
+
+    private bool isShowUI = true;
+    [SerializeField] GameObject RightDownCorner;
+    [SerializeField] GameObject LeftDownCorner;
+    [SerializeField] GameObject RightUpCorner;
+    [SerializeField] GameObject LeftUpCorner;
+
+    [SerializeField] TextMeshProUGUI SongTitle;
+    [SerializeField] Button NextSongButton;
+    [SerializeField] Button PreviousSongButton;
+
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
 
         InitButtons();
-        InitSlider();
+        //InitSlider();
     }
 
 
-    void InitSlider()
+    void Start()
     {
-        MoveSpeedSlider.minValue = 0;
-        MoveSpeedSlider.maxValue = speedLevels.Length - 1;
-        MoveSpeedSlider.wholeNumbers = true; 
-        MoveSpeedSlider.value = 1;
-        MoveSpeedSlider.onValueChanged.AddListener(OnSliderValueChanged);
+        GomokuManager.Instance.GetGomokuData().OnGomokuDataChanged += UpdateTurnText;
+        UpdateTurnText();
         SetSpeed((int)MoveSpeedSlider.value);
+        SetCornerUIActive(true);
+
     }
 
 
-    private void OnSliderValueChanged(float value)
-    {
-        int index = Mathf.RoundToInt(value); 
-        SetSpeed(index);
-    }
+    //void InitSlider()
+    //{
+    //    MoveSpeedSlider.minValue = 0;
+    //    MoveSpeedSlider.maxValue = speedLevels.Length - 1;
+    //    MoveSpeedSlider.wholeNumbers = true; 
+    //    MoveSpeedSlider.value = currentSpeedLevel;
+    //}
+
+
 
     void SetSpeed(int levelIndex)
     {
-        levelIndex = Mathf.Clamp(levelIndex, 0, speedLevels.Length - 1);
+        if (levelIndex > speedLevels.Length - 1 || levelIndex < 0) return;
+        currentSpeedLevel = levelIndex;
         moveSpeed = speedLevels[levelIndex];
-        MoveSpeedText.text = $"Current Move Speed: {moveSpeed.ToString("N3")}";
+        MoveSpeedSlider.value = sliderValues[levelIndex];
+        MoveSpeedImage.sprite = UIManager.Instance.GetLevelNumSprite(levelIndex);
     }
 
     public float GetMoveSpeed()
@@ -59,9 +90,52 @@ public class GameUIControl : MonoBehaviour
     #region Buttons
     void InitButtons()
     {
+
+        LevelButton.onClick.AddListener(OnLevelButtonClick);
+
         ShowNumberButton.onClick.AddListener(OnShowNumberClick);
         ResignButton.onClick.AddListener(OnResignButtonClick);
         ResetButton.onClick.AddListener(OnRestButtonClick);
+
+        PlusButton.onClick.AddListener(() => SetSpeed(currentSpeedLevel+1));
+        MinusButton.onClick.AddListener(() => SetSpeed(currentSpeedLevel - 1));
+
+        NextSongButton.onClick.AddListener(OnNextSongButtonClick);
+        PreviousSongButton.onClick.AddListener(OnPreviousSongButtonClick);
+        ShowGirdButton.onClick.AddListener(OnShowGirdButtonClick);
+
+    }
+
+    private void OnLevelButtonClick()
+    {
+        switch (GomokuManager.Instance.currentLevel)
+        {
+            case GomokuConstants.EasyLevelDepth: GameResultPanelControl.Instance.SetLevel(GomokuConstants.MediumLevelDepth); break;
+            case GomokuConstants.MediumLevelDepth: GameResultPanelControl.Instance.SetLevel(GomokuConstants.HardLevelDepth); break;
+            case GomokuConstants.HardLevelDepth: GameResultPanelControl.Instance.SetLevel(GomokuConstants.EasyLevelDepth); break;
+        }
+    }
+
+
+    void OnShowGirdButtonClick()
+    {
+        GomokuManager.Instance.isShowAllGrid = !GomokuManager.Instance.isShowAllGrid;
+    }
+
+
+    void OnNextSongButtonClick()
+    {
+        AudioManager.Instance.PlayNextBGM();
+    }
+
+    void OnPreviousSongButtonClick()
+    {
+        AudioManager.Instance.PlayPreviousBGM();
+    }
+
+    public void SetBGMTitle()
+    {
+        SongTitle.text = AudioManager.Instance.GetCurrentBGMName();
     }
 
     void OnShowNumberClick()
@@ -84,17 +158,14 @@ public class GameUIControl : MonoBehaviour
     
     #endregion
 
-    private void Start()
-    {
-        GomokuManager.Instance.GetGomokuData().OnGomokuDataChanged += UpdateTurnText;
-        UpdateTurnText();
-    }
 
     // Update is called once per frame
     void Update()
     {
-        
+        if (Input.GetMouseButtonDown(1)) SetCornerUIActive(!isShowUI);   
     }
+
+
 
     private void UpdateTurnText()
     {
@@ -103,11 +174,24 @@ public class GameUIControl : MonoBehaviour
 
         bool isPlayerTurn = data.IsPlayerTurn();
 
-        string turnInfo = isPlayerTurn
-            ? $"Turn {current}: Your Turn!"
-            : $"Turn {current}: AI Turn!";
 
-        TurnText.text = turnInfo;
+        AITurnGameObject.SetActive(!isPlayerTurn);
+        PlayerTurnGameObject.SetActive(isPlayerTurn);
+
+
+        int tens = current / 10;   
+        int digits = current % 10; 
+
+        if (isPlayerTurn)
+        {
+            PlayerTurnTens.sprite = UIManager.Instance.GetLevelNumSprite(tens);
+            PlayerTurnDigits.sprite = UIManager.Instance.GetLevelNumSprite(digits); 
+        }
+        else
+        {
+            AIurnTens.sprite = UIManager.Instance.GetLevelNumSprite(tens);
+            AIurnDigits.sprite = UIManager.Instance.GetLevelNumSprite(digits);
+        }
     }
 
 
@@ -133,6 +217,16 @@ public class GameUIControl : MonoBehaviour
     {
         if (GomokuManager.Instance.GetGomokuData() != null)
             GomokuManager.Instance.GetGomokuData().OnGomokuDataChanged -= UpdateTurnText;
+    }
+
+    void SetCornerUIActive(bool isActive)
+    {
+         isShowUI = isActive;
+         RightDownCorner.SetActive(isActive);
+         LeftDownCorner.SetActive(isActive);
+         RightUpCorner.SetActive(isActive);
+         LeftUpCorner.SetActive(isActive);
+
     }
 
 }

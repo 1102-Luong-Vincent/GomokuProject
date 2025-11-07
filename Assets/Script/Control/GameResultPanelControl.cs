@@ -1,4 +1,10 @@
+using NUnit.Framework;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices.WindowsRuntime;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,9 +21,17 @@ public static class ResultPanelConstants
 public class GameResultPanelControl : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public static GameResultPanelControl Instance;
 
-    [SerializeField] TextMeshProUGUI GameResultPanelTitle;
-    [SerializeField] TextMeshProUGUI LevelText;
+    [SerializeField] GameObject GameResultPanelTitle;
+    [SerializeField] GameObject GameResultWinTitle;
+    [SerializeField] GameObject GameResultLoseTitle;
+    [SerializeField] GameObject GameResultDrawTitle;
+
+
+    [SerializeField] Image LevelImage;
+
+
     [SerializeField] private GameObject gamePanel;
     [SerializeField] private GameObject gameUI;
 
@@ -32,10 +46,12 @@ public class GameResultPanelControl : MonoBehaviour
     [SerializeField] Button EasyButton;
     [SerializeField] Button MediumButton;
     [SerializeField] Button HardButton;
-    
+
 
     private void Awake()
     {
+        if (Instance == null) Instance = this;
+
         InitButton();
         EasyButton.gameObject.SetActive(false);
         MediumButton.gameObject.SetActive(false);
@@ -49,12 +65,15 @@ public class GameResultPanelControl : MonoBehaviour
         gameUI.SetActive(false);
     }
 
+    void Start()
+    {
+        SetLevel(GomokuConstants.EasyLevelDepth);
+    }
 
     #region Button
 
     void InitButton()
     {
-        SetLevel(GomokuConstants.EasyLevelDepth);
         StartButton.onClick.AddListener(OnStartButtonClick);
         RandomStartButton.onClick.AddListener(OnRandomStartButtonClick);
         BlackStartButton.onClick.AddListener(OnBlackStartButtonClick);
@@ -68,10 +87,10 @@ public class GameResultPanelControl : MonoBehaviour
 
     }
 
-    void SetLevel(int level)
+     public void SetLevel(int level)
     {
         GomokuManager.Instance.SetCurrentLevel(level);
-        LevelText.text = level.ToString();
+        LevelImage.sprite = UIManager.Instance.GetLevelNumSprite(level);
     }
 
     void OnStartButtonClick()
@@ -150,7 +169,11 @@ public class GameResultPanelControl : MonoBehaviour
 
     public void ShowStart()
     {
-        GameResultPanelTitle.text = ResultPanelConstants.GameTitle;
+        GameResultPanelTitle.SetActive(true);
+        GameResultWinTitle.SetActive(false);
+        GameResultLoseTitle.SetActive(false);
+        GameResultDrawTitle.SetActive(false);
+
         ShowPanel();
     }
 
@@ -173,19 +196,28 @@ public class GameResultPanelControl : MonoBehaviour
 
     void ShowDrawResult()
     {
-        GameResultPanelTitle.text = ResultPanelConstants.DrawTitle;
+        GameResultPanelTitle.SetActive(false);
+        GameResultWinTitle.SetActive(false);
+        GameResultLoseTitle.SetActive(false);
+        GameResultDrawTitle.SetActive(true);
     }
 
 
 
     void ShowLoseResult()
     {
-        GameResultPanelTitle.text = ResultPanelConstants.LoseTitle;
+        GameResultPanelTitle.SetActive(false);
+        GameResultWinTitle.SetActive(false);
+        GameResultDrawTitle.SetActive(false);
+        GameResultLoseTitle.SetActive(true);
     }
 
     void ShowWinResult()
     {
-        GameResultPanelTitle.text = ResultPanelConstants.WinTitle;
+        GameResultPanelTitle.SetActive(false);
+        GameResultWinTitle.SetActive(true);
+        GameResultDrawTitle.SetActive(false);
+        GameResultLoseTitle.SetActive(false);
     }
 
     public void ClosePanel()
@@ -194,11 +226,6 @@ public class GameResultPanelControl : MonoBehaviour
     }
 
     #endregion
-
-    void Start()
-    {
-        
-    }
 
     // Update is called once per frame
     void Update()

@@ -1,5 +1,6 @@
-﻿using UnityEngine;
-using System.IO;
+﻿using System.IO;
+using System.Linq;
+using UnityEngine;
 
 public static class AudioConstants
 {
@@ -17,6 +18,9 @@ public class AudioManager : MonoBehaviour
     [Header("Audio Sources")]
     [SerializeField] private AudioSource bgmAudio;
     [SerializeField] private AudioSource sfxAudio;
+    private string[] bgmFiles;
+    private int currentBgmIndex = 7;
+
 
     private void Awake()
     {
@@ -27,12 +31,24 @@ public class AudioManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        LoadAllBGMs();
     }
 
     private void Start()
     {
         PlayBackgroundMusic(AudioConstants.BGMPath);
     }
+
+
+    private void LoadAllBGMs()
+    {
+        bgmFiles = Resources.LoadAll<AudioClip>("Audio/BGM")
+                            .Select(c => $"Audio/BGM/{c.name}")
+                            .ToArray();
+
+        Debug.Log($"[AudioManager] Loaded {bgmFiles.Length} BGM tracks.");
+    }
+
 
     private AudioClip LoadAudioFromResources(string relativePath)
     {
@@ -49,6 +65,8 @@ public class AudioManager : MonoBehaviour
         bgmAudio.volume = AudioConstants.BGMVolume;
         bgmAudio.loop = true;
         bgmAudio.Play();
+
+        GameUIControl.Instance.SetBGMTitle();
     }
 
     public void PlayClick(string sfxPath = AudioConstants.ClickSFXPath)
@@ -58,4 +76,29 @@ public class AudioManager : MonoBehaviour
 
         sfxAudio.PlayOneShot(sfxClip, AudioConstants.SFXVolume);
     }
+
+
+    public void PlayNextBGM()
+    {
+        if (bgmFiles == null || bgmFiles.Length == 0) return;
+        currentBgmIndex = (currentBgmIndex + 1) % bgmFiles.Length;
+        PlayBackgroundMusic(bgmFiles[currentBgmIndex]);
+    }
+
+    public void PlayPreviousBGM()
+    {
+        if (bgmFiles == null || bgmFiles.Length == 0) return;
+        currentBgmIndex = (currentBgmIndex - 1 + bgmFiles.Length) % bgmFiles.Length;
+        PlayBackgroundMusic(bgmFiles[currentBgmIndex]);
+    }
+
+    public string GetCurrentBGMName()
+    {
+        if (bgmFiles == null || bgmFiles.Length == 0 || currentBgmIndex < 0)
+            return "No BGM Playing";
+
+        string fullPath = bgmFiles[currentBgmIndex];
+        return Path.GetFileName(fullPath); 
+    }
+
 }

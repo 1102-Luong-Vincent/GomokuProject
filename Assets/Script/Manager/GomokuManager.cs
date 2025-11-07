@@ -13,6 +13,7 @@ public static class GomokuConstants
     public const float chessPositionY = 0.03f;
     public const float AIThinkTime = 1f;
 
+    public const int LevelCount = 3;
     public const int EasyLevelDepth = 1;
     public const int MediumLevelDepth = 2;
     public const int HardLevelDepth = 3;
@@ -34,10 +35,12 @@ public class GomokuManager : MonoBehaviour
     private bool aiThinking = false;
     private bool isMoving = false; // ????????
 
-    int currentLevel = GomokuConstants.EasyLevelDepth;
+    public int currentLevel = GomokuConstants.EasyLevelDepth;
 
     private Coroutine currentMoveCoroutine = null;
     private Coroutine currentAICoroutine = null;
+
+    public bool isShowAllGrid = false;
 
 
     private void Awake()
@@ -97,7 +100,7 @@ public class GomokuManager : MonoBehaviour
             
                 if (sr != null)
                 {
-                   if (gomokuData.GetBoard()[x, y] == GomoKuType.None )  sr.color = new Color32(255, 255, 255, 255);
+                   if (gomokuData.GetBoard()[x, y] == GomoKuType.None )  sr.color = Color.red;
 
                 }
             }                 
@@ -113,7 +116,13 @@ public class GomokuManager : MonoBehaviour
             SpriteRenderer sr = cellObj.GetComponent<SpriteRenderer>();
             if (sr != null)
             {
-                sr.color = new Color32(255, 255, 255, 0);
+                if (isShowAllGrid) {
+                    sr.color = new Color32(255, 255, 255, 255);
+                }
+                else
+                {
+                    sr.color = new Color32(255, 255, 255, 0);
+                }
             }
         }
     }

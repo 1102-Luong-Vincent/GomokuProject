@@ -8,6 +8,11 @@ public class CameraControl : MonoBehaviour
     public float minZoom = 1f;
     public float maxZoom = 10f;
 
+    public float minX = -1f;
+    public float maxX = 1f;
+    public float minZ = -1f;
+    public float maxZ = 1f;
+
     private Camera cam;
     private Vector3 defaultPosition;
     private float defaultFOV;
@@ -25,8 +30,6 @@ public class CameraControl : MonoBehaviour
         Instance = this;
     }
 
-
-
     void Start()
     {
         cam = GetComponent<Camera>();
@@ -39,11 +42,17 @@ public class CameraControl : MonoBehaviour
     {
         float moveX = Input.GetAxis("Horizontal");
         float moveZ = Input.GetAxis("Vertical");
+
         Vector3 move = new Vector3(moveX, 0, moveZ) * moveSpeed * Time.deltaTime;
         transform.Translate(move, Space.World);
 
+        Vector3 pos = transform.position;
+        pos.x = Mathf.Clamp(pos.x, minX, maxX);
+        pos.z = Mathf.Clamp(pos.z, minZ, maxZ); 
+        transform.position = pos;
+
         float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (cam.orthographic == false)
+        if (!cam.orthographic)
         {
             cam.fieldOfView -= scroll * zoomSpeed;
             cam.fieldOfView = Mathf.Clamp(cam.fieldOfView, minZoom, maxZoom);
@@ -58,7 +67,7 @@ public class CameraControl : MonoBehaviour
     public void ResetCamera()
     {
         transform.position = defaultPosition;
-        if (cam.orthographic == false)
+        if (!cam.orthographic)
             cam.fieldOfView = defaultFOV;
         else
             cam.orthographicSize = defaultOrthoSize;
